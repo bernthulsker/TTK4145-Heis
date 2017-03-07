@@ -135,18 +135,18 @@ func elev_check_buttons(button_presses chan Orders) {
 }
 
 func elev_light_controller(orders chan Orders) {
-	for{
-		select{
-		case lights := <- orders:
+	for {
+		select {
+		case lights := <-orders:
 			Io_write_bit(LIGHT_COMMAND1, lights.IntOrders[0])
 			Io_write_bit(LIGHT_COMMAND3, lights.IntOrders[2])
 			Io_write_bit(LIGHT_COMMAND2, lights.IntOrders[1])
 			Io_write_bit(LIGHT_COMMAND4, lights.IntOrders[3])
-	
-			Io_write_bit(LIGHT_UP1,	lights.ExtUpOrders[0])
-			Io_write_bit(LIGHT_UP2,	lights.ExtUpOrders[1])
+
+			Io_write_bit(LIGHT_UP1, lights.ExtUpOrders[0])
+			Io_write_bit(LIGHT_UP2, lights.ExtUpOrders[1])
 			Io_write_bit(LIGHT_UP3, lights.ExtUpOrders[2])
-	
+
 			Io_write_bit(LIGHT_DOWN2, lights.ExtDwnOrders[1])
 			Io_write_bit(LIGHT_DOWN3, lights.ExtDwnOrders[2])
 			Io_write_bit(LIGHT_DOWN4, lights.ExtDwnOrders[3])
@@ -200,12 +200,6 @@ func pause() {
 		fmt.Println("Som er så lenge siden:", sin)
 		time.Sleep(time.Second * 1)
 
-	}
-}
-
-func elev_light_controller(lights chan Orders) {
-	for{
-		select
 	}
 }
 
