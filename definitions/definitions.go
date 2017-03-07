@@ -18,8 +18,7 @@ type Elevator struct {
 	Alive     bool
 	Floor     int //Last floor visited
 	Direction int
-	Orders    Orders      //Button pushes
-	Requests  Orders      //
+	Requests  Orders
 	Queue     [FLOORS]int //First element of list is current target of the elevator, 2nd element is next...
 }
 
