@@ -173,6 +173,10 @@ func pause() {
 	}
 }
 
+func elev_light_controller(lights chan Orders) {
+
+}
+
 func Elev_test() {
 	into_elev := make(chan Elevator, 1)
 	outof_elev := make(chan Elevator, 1)
