@@ -174,7 +174,7 @@ func pause() {
 }
 
 func elev_light_controller(lights chan Orders) {
-
+	//i have another fucking comment
 }
 
 func Elev_test() {
