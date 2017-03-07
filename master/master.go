@@ -36,17 +36,44 @@ func MasterLoop(isMaster chan bool, masterMessage chan Message, peerChan chan pe
 
 
 func calculateOptimalElevator(message Message, companions []string){
-	var leastCostID
-	var cost
-	for companion := range companions{
-		companionFloor = message.Elevators[companion].floor
-		if(companionFloor == 0){										//if the element doesn't exist in the map
+	leastCostID := ""
+	leastCost := 0
+	cost := 0
+	orders  = message.Orders
+	for _,order := range orders.ExtUpOrders{
+		if(order == 0){
 			continue
-		}
-		companionQueue = message.Elevators[companion].Queue
-		orderedFloor = message.order
-		for queueElement :=range companionQueue{
-
+		} else{
+			CostLoop:
+				for _,companion := range companions{
+					companionFloor = message.Elevators[companion].floor
+					companionQueue = message.Elevators[companion].Queue
+					for i,queueElement := range companionQueue{
+						if( order == queueElement){
+							break CostLoop
+							cost = -1
+						}
+						if(queueElement == 0){
+							firstZero = i
+							continue
+						} else{
+							cost = cost + abs(queueElement - order)
+						}
+					}
+					cost = cost + abs(companionFloor-order)
+					if(leastCost == 0 || leastCost > cost){
+						leastCost = cost
+						leastCostID = companion
+					}else{
+						firstZero = 0
+					}
+					cost = 0
+				}
+			if(cost == -1){
+				continue
+			} else{
+				message.Elevators[leastCostID].Queue[firstZero] = order
+			}
 		}
 	}
 }
