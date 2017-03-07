@@ -4,6 +4,7 @@ import (
 	."../definitions"
 	"../udp/peers"
 	"fmt"
+	"math"
 )
 
 
@@ -40,8 +41,9 @@ func calculateOptimalElevator(message Message, companions []string) (Message) {
 	leastCostID := ""
 	leastCost := 0
 	cost := 0
+	firstZero := 0
 	sender := message.SenderID
-	orders  := message.Orders
+	orders  := message.Order
 
 	//Calculate optimal elevator for external orders
 	for _,order := range orders.ExtUpOrders{
@@ -50,8 +52,8 @@ func calculateOptimalElevator(message Message, companions []string) (Message) {
 		} else{
 			CostLoop:
 				for _,companion := range companions{
-					companionFloor = message.Elevators[companion].floor
-					companionQueue = message.Elevators[companion].Queue
+					companionFloor := message.Elevators[companion].Floor
+					companionQueue := message.Elevators[companion].Queue
 					for i,queueElement := range companionQueue{
 						if( order == queueElement){
 							break CostLoop
@@ -63,10 +65,10 @@ func calculateOptimalElevator(message Message, companions []string) (Message) {
 							}
 							continue
 						} else{
-							cost = cost + abs(queueElement - companionQueue[i-1])
+							cost = cost + math.Abs(queueElement - companionQueue[i-1])
 						}
 					}
-					cost = cost + abs(companionFloor-order)
+					cost = cost + math.Abs(companionFloor-order)
 					if(leastCost == 0 || leastCost > cost){
 						leastCost = cost
 						leastCostID = companion
@@ -103,10 +105,10 @@ func calculateOptimalElevator(message Message, companions []string) (Message) {
 							}
 							continue
 						} else{
-							cost = cost + abs(queueElement - companionQueue[i-1])
+							cost = cost + math.Abs(queueElement - companionQueue[i-1])
 						}
 					}
-					cost = cost + abs(companionFloor-order)
+					cost = cost + math.Abs(companionFloor-order)
 					if(leastCost == 0 || leastCost > cost){
 						leastCost = cost
 						leastCostID = companion
