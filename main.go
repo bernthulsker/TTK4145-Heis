@@ -1,17 +1,16 @@
 package main
 
 import (
-	//"./udp"
-	//"./master"
-	//. "./definitions"
-	//"./udp/peers"
-	//"time"
+	"./udp"
+	"./master"
+	. "./definitions"
+	"./udp/peers"
+	"time"
 	"fmt"
 )
 
 
 
-//i'll add a comment
 
 func main(){
 	//Make channels
