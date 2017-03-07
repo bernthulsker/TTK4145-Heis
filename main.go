@@ -37,11 +37,18 @@ func main(){
 	}
 
 	go udp.UDPUpkeep(peerChan, peerMasterChan, isMaster, localIP, masterIDChan, masterID, UDPoutChan)
-
+	requests := Orders{};
+	orders := Orders{[1 1 1 1], [1 1 1 1], [1 1 1 1]};
+	elevators := make(map[string]Elevator)
+	elevators["Alice"] = {1,1,1,requests}
+	elevators["Bob"] = {1, 3, 1, requests}
+	message := Message{elevators, orders, "Alice", "Alice", 1}
+	masterMessage <- message
 	for{
 		fmt.Println("I am in the ending loop")
 		time.Sleep(time.Second*5)
 	}
+}
 
 
 func treatMessages(UDPinChan chan Message, UDPoutChan chan Message, masterMessage chan Message, masterIDChan chan string, masterID string, localIP string){
@@ -150,4 +157,6 @@ func treatMessages(UDPinChan chan Message, UDPoutChan chan Message, masterMessag
 				masterID = companion
 			}
 		}
-	}*/
+	}
+
+	*/

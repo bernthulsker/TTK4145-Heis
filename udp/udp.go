@@ -7,6 +7,7 @@ import (
 	"./peers"
 	"time"
 	"fmt"
+	"reflect"
 )
 
 
@@ -152,7 +153,7 @@ func waitForEcho(transmitChan chan Message, message Message){
 				//HER MÅ OGSÅ MELDINGENE SENDES TILBAKE SÅ DE KAN BEHANDLS PÅ NYTT OG SENDES TIL NY RIKTIG PEER
 			}
 		case echo := <-echoChan:
-			if(echo == message){ 											//checking to see if you recieved the right echo
+			if(reflect.DeepEqual(echo.Elevators, message.Elevators) && echo.Order == message.Order && echo.MsgType == message.MsgType){ 											//checking to see if you recieved the right echo
 				doneChan <- true 											
 			}
 		case <- doneChan:
