@@ -5,7 +5,6 @@ import (
 	//"bufio"
 	"fmt"
 	//"os"
-
 	"time"
 )
 
@@ -153,7 +152,37 @@ func elev_light_controller(orders chan Orders) {
 		}
 	}
 }
+func Elev_driver(incm_elev_update chan Elevator, out_elev_update chan Elevator) int {
+	//--------Init of driver-------------
+	init_result := elev_init()
+	if init_result == 0 {
+		fmt.Println("Init failed")
+		return 0 //The elevator failed to initialize
+	}
+	local_lift := Elevator{}
 
+	kill := make(chan bool, 1)
+	find_next_floor := make(chan int)
+	lights := make(chan Orders)
+
+	go elev_light_controller(lights)
+
+	//----------Normal operation-----------
+	for {
+		select {
+		case local_lift = <-incm_elev_update:
+			i = 0
+			kill <- true
+			go elev_go_to_floor(local_lift.Queue[0], kill, find_next_floor)
+			lights <- local_lift.Requests
+			continue			
+			}
+
+		}
+	}
+}
+
+/*
 func Elev_driver(incm_elev_update chan Elevator, out_elev_update chan Elevator) int {
 	//--------Init of driver-------------
 	init_result := elev_init()
@@ -166,7 +195,10 @@ func Elev_driver(incm_elev_update chan Elevator, out_elev_update chan Elevator) 
 
 	kill := make(chan bool, 1)
 	find_next_floor := make(chan int)
+	lights := make(chan Orders)
 	i := 0
+
+	go elev_light_controller(lights)
 
 	//----------Normal operation-----------
 	for {
@@ -175,6 +207,7 @@ func Elev_driver(incm_elev_update chan Elevator, out_elev_update chan Elevator) 
 			i = 0
 			kill <- true
 			go elev_go_to_floor(local_lift.Queue[i], kill, find_next_floor)
+			lights <- local_lift.Requests
 			continue
 		case <-find_next_floor:
 			i++
@@ -190,6 +223,7 @@ func Elev_driver(incm_elev_update chan Elevator, out_elev_update chan Elevator) 
 		}
 	}
 }
+*/
 
 func pause() {
 	t := time.Now()
@@ -209,10 +243,14 @@ func Elev_test() {
 	outof_elev := make(chan Elevator, 1)
 
 	go Elev_driver(into_elev, outof_elev)
-	el := Elevator{true, 1, 1, Orders{}, Orders{}, [FLOORS]int{3, 1, 4, 2}}
+	el := Elevator{true, 1, 1, Orders{[FLOORS]int{1, 1, 1, 1}, [FLOORS]int{1, 1, 1, 1}, [FLOORS]int{1, 1, 1, 1}}, Orders{}, [FLOORS]int{1, 0, 0, 0}}
 
 	into_elev <- el
+	time.Sleep(time.Second * 2)
 
+	el = Elevator{true, 1, 1, Orders{[FLOORS]int{1, 0, 1, 0}, [FLOORS]int{1, 0, 0, 1}, [FLOORS]int{1, 1, 0, 0}}, Orders{}, [FLOORS]int{1, 0, 0, 0}}
+
+	into_elev <- el
 	for {
 
 	}
