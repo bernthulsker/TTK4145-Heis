@@ -109,7 +109,6 @@ func elev_go_to_floor(floor int, kill chan bool, stopped_at_floor chan int /*,st
 
 func elev_check_buttons(button_presses chan Orders) {
 	button_inputs := Orders{}
-
 	for {
 		//Reads the internal orders
 		button_inputs.IntOrders[0] = Io_read_bit(BUTTON_COMMAND1)
@@ -152,7 +151,36 @@ func elev_light_controller(orders chan Orders) {
 		}
 	}
 }
+
+func elev_check_motordir() int {
+	return Io_read_bit(MOTORDIR)
+}
+
+func elev_status_checker(status chan Elevator) {
+	status_elev := Elevator{}
+	status_change := false
+	for {
+		fmt.Println("Checking for a change")
+		floor := elev_check_floor_sensor()
+		if floor != status_elev.Floor && floor != 0 {
+			status_elev.Floor = floor
+			status_change = true
+		}
+		dir := elev_check_motordir()
+		if dir != status_elev.Direction {
+			status_elev.Direction = dir
+			status_change = true
+		}
+		if status_change {
+			status <- status_elev
+			status_change = false
+		}
+	}
+}
+
 func Elev_driver(incm_elev_update chan Elevator, out_elev_update chan Elevator) int {
+	//--------Start the status checker---
+
 	//--------Init of driver-------------
 	init_result := elev_init()
 	if init_result == 0 {
@@ -171,13 +199,10 @@ func Elev_driver(incm_elev_update chan Elevator, out_elev_update chan Elevator) 
 	for {
 		select {
 		case local_lift = <-incm_elev_update:
-			i = 0
 			kill <- true
 			go elev_go_to_floor(local_lift.Queue[0], kill, find_next_floor)
 			lights <- local_lift.Requests
-			continue			
-			}
-
+			continue
 		}
 	}
 }
@@ -238,20 +263,19 @@ func pause() {
 }
 
 func Elev_test() {
+
 	Io_init()
 	into_elev := make(chan Elevator, 1)
 	outof_elev := make(chan Elevator, 1)
+	go elev_status_checker(into_elev)
 
 	go Elev_driver(into_elev, outof_elev)
-	el := Elevator{true, 1, 1, Orders{[FLOORS]int{1, 1, 1, 1}, [FLOORS]int{1, 1, 1, 1}, [FLOORS]int{1, 1, 1, 1}}, Orders{}, [FLOORS]int{1, 0, 0, 0}}
 
-	into_elev <- el
-	time.Sleep(time.Second * 2)
-
-	el = Elevator{true, 1, 1, Orders{[FLOORS]int{1, 0, 1, 0}, [FLOORS]int{1, 0, 0, 1}, [FLOORS]int{1, 1, 0, 0}}, Orders{}, [FLOORS]int{1, 0, 0, 0}}
-
-	into_elev <- el
 	for {
-
+		select {
+		case el := <-into_elev:
+			fmt.Println(el.Direction)
+			fmt.Println(el.Floor)
+		}
 	}
 }
