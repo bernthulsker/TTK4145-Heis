@@ -36,9 +36,34 @@ func elev_go(dir int) { //Dir =1, elevator goes up. Dir = 0, elevator stops, Dir
 	}
 }
 
+func elev_set_floor_light(floor int) {
+	if floor == 1 {
+		Io_clear_bit(LIGHT_FLOOR_IND1)
+		Io_clear_bit(LIGHT_FLOOR_IND2)
+		return
+	}
+	if floor == 2 {
+		Io_clear_bit(LIGHT_FLOOR_IND1)
+		Io_set_bit(LIGHT_FLOOR_IND2)
+		return
+	}
+	if floor == 3 {
+		Io_set_bit(LIGHT_FLOOR_IND1)
+		Io_clear_bit(LIGHT_FLOOR_IND2)
+		return
+	}
+	if floor == 4 {
+		Io_set_bit(LIGHT_FLOOR_IND1)
+		Io_set_bit(LIGHT_FLOOR_IND2)
+		return
+	}
+	return
+}
+
 func elev_check_floor_sensor() int { //Returns the floor if the elevator is there, otherwise returns 0
 	for i := 0; i < FLOORS; i++ {
 		if Io_read_bit(SENSOR_FLOOR1+i) == 1 {
+			elev_set_floor_light(i + 1)
 			return i + 1
 		}
 	}
@@ -109,19 +134,24 @@ func elev_check_buttons(button_presses chan Orders) {
 	}
 }
 
-func elev_set_lights(orders Orders) {
-	Io_write_bit(LIGHT_COMMAND1, orders.IntOrders[0])
-	Io_write_bit(LIGHT_COMMAND2, orders.IntOrders[1])
-	Io_write_bit(LIGHT_COMMAND3, orders.IntOrders[2])
-	Io_write_bit(LIGHT_COMMAND4, orders.IntOrders[3])
-
-	Io_write_bit(LIGHT_UP1, orders.ExtUpOrders[0])
-	Io_write_bit(LIGHT_UP2, orders.ExtUpOrders[1])
-	Io_write_bit(LIGHT_UP3, orders.ExtUpOrders[2])
-
-	Io_write_bit(LIGHT_DOWN2, orders.ExtDwnOrders[1])
-	Io_write_bit(LIGHT_DOWN3, orders.ExtDwnOrders[2])
-	Io_write_bit(LIGHT_DOWN4, orders.ExtDwnOrders[3])
+func elev_light_controller(orders chan Orders) {
+	for{
+		select{
+		case lights := <- orders:
+			Io_write_bit(LIGHT_COMMAND1, lights.IntOrders[0])
+			Io_write_bit(LIGHT_COMMAND3, lights.IntOrders[2])
+			Io_write_bit(LIGHT_COMMAND2, lights.IntOrders[1])
+			Io_write_bit(LIGHT_COMMAND4, lights.IntOrders[3])
+	
+			Io_write_bit(LIGHT_UP1,	lights.ExtUpOrders[0])
+			Io_write_bit(LIGHT_UP2,	lights.ExtUpOrders[1])
+			Io_write_bit(LIGHT_UP3, lights.ExtUpOrders[2])
+	
+			Io_write_bit(LIGHT_DOWN2, lights.ExtDwnOrders[1])
+			Io_write_bit(LIGHT_DOWN3, lights.ExtDwnOrders[2])
+			Io_write_bit(LIGHT_DOWN4, lights.ExtDwnOrders[3])
+		}
+	}
 }
 
 func Elev_driver(incm_elev_update chan Elevator, out_elev_update chan Elevator) int {
@@ -174,29 +204,22 @@ func pause() {
 }
 
 func elev_light_controller(lights chan Orders) {
-	//i have another fucking comment
-	//YOU FUCKING BITCH
+	for{
+		select
+	}
 }
 
 func Elev_test() {
+	Io_init()
 	into_elev := make(chan Elevator, 1)
 	outof_elev := make(chan Elevator, 1)
 
 	go Elev_driver(into_elev, outof_elev)
-	el := Elevator{true, 1, 1, Orders{}, [FLOORS]int{3, 2, 3, 2}}
+	el := Elevator{true, 1, 1, Orders{}, Orders{}, [FLOORS]int{3, 1, 4, 2}}
 
 	into_elev <- el
 
-	el.Queue[0] = 1
-	el.Queue[1] = 2
-	el.Queue[2] = 0
-	el.Queue[3] = 1
-
-	time.Sleep(time.Second * 8)
-	fmt.Println("Sending new elev")
-
-	into_elev <- el
 	for {
-	}
 
+	}
 }
