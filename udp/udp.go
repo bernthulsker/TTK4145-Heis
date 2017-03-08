@@ -18,7 +18,7 @@ func UDPInit(UDPoutChan chan Message, UDPinChan chan Message, isMaster chan bool
 	if err != nil {
 		return							//FIX HVA SOM SKAL SKJE VED FEIL
 	}
-	localIP = "Alice"
+	localIP = "Bob"
 
 	sendStatus(localIP)
 	recieveStatus(peerChan)
@@ -69,6 +69,7 @@ func UDPUpkeep(peerChan chan peers.PeerUpdate, peerMasterChan chan peers.PeerUpd
 					}
 					if( masterID == localIP){
 						isMaster <- true
+						peerMasterChan <- peerInfo
 					}
 					masterIDChan <- masterID
 				}
@@ -113,9 +114,11 @@ func transmitMessage(UDPoutChan chan Message, localIP string){
 	for{
 		select{
 		case message := <- UDPoutChan:
+			fmt.Println("Transmitting")
+			fmt.Println(message)
 			message.SenderID = localIP 										//adding the localIP as senderID			
 			transmitChan <- message 										//transmitting the mssage
-			go waitForEcho(transmitChan, message)							//start new goroutine who waits for echo
+			waitForEcho(transmitChan, message)							//start new goroutine who waits for echo
 		}
 	}
 }
@@ -128,6 +131,7 @@ func recieveMessage(UDPinChan chan Message, localIP string){
 	for{
 		select{
 		case  message := <- recieveChan:
+			fmt.Println("Recieved")
 			if(message.RecieverID == localIP){								//checking to see if the message was ment for you
 				echoChan <- message 										// putting out an echo on the echoport								
 				UDPinChan <- message 										//transmitting the message back to main and further
@@ -140,24 +144,23 @@ func recieveMessage(UDPinChan chan Message, localIP string){
 func waitForEcho(transmitChan chan Message, message Message){
 	ticker := time.NewTicker(time.Millisecond * 1000).C 					//waiting one second between resends
 	echoChan := make(chan Message)
-	doneChan := make(chan bool)
 	i := 0
 	go bcast.Receiver(ECHOPORT, echoChan)
 	for{
 		select{
 		case <- ticker:
+			fmt.Println("Echo")
 			transmitChan <- message 										//rebroadcasting if there is no reply
 			i+=1
 			if(i > 5){
-				doneChan <- true											//if no reply in five seconds assume peer lost and stop the  goroutine
+				return											//if no reply in five seconds assume peer lost and stop the  goroutine
 				//HER MÅ OGSÅ MELDINGENE SENDES TILBAKE SÅ DE KAN BEHANDLS PÅ NYTT OG SENDES TIL NY RIKTIG PEER
 			}
 		case echo := <-echoChan:
-			if(reflect.DeepEqual(echo.Elevators, message.Elevators) && echo.Order == message.Order && echo.MsgType == message.MsgType){ 											//checking to see if you recieved the right echo
-				doneChan <- true 											
-			}
-		case <- doneChan:
-			return															//when the right echo were recieved, stop the echo
+			if(reflect.DeepEqual(echo.Elevators, message.Elevators) && echo.Order == message.Order && echo.MsgType == message.MsgType){ 
+				fmt.Println("Right echo!")											//checking to see if you recieved the right echo
+				return											
+			}														//when the right echo were recieved, stop the echo
 		}
 	}
 }

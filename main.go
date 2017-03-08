@@ -17,7 +17,7 @@ func main(){
 	UDPoutChan := make (chan Message)
 	UDPinChan := make (chan Message)
 	peerChan := make(chan peers.PeerUpdate)
-	peerMasterChan := make(chan peer.PeerUpdate)
+	peerMasterChan := make(chan peers.PeerUpdate)
 	isMaster := make(chan bool)
 	masterIDChan := make(chan string)
 	masterMessage := make(chan Message)
@@ -28,22 +28,33 @@ func main(){
 	localIP := udp.UDPInit(UDPoutChan, UDPinChan, isMaster, masterIDChan, peerChan)
 	masterID = udp.MasterInit(peerChan, isMaster, localIP, UDPoutChan)
 
-	go treatMessages(UDPinChan, UDPoutChan, masterIDChan, masterID, localIP)
+	go treatMessages(UDPinChan, UDPoutChan, masterMessage, masterIDChan, masterID, localIP)
 
-	fmt.Println("Waiting for ID...")
-	select{
-	case masterID = <- masterIDChan:
-		fmt.Println("masteridchan" + masterID)
+	if(masterID == ""){
+		fmt.Println("Waiting for ID...")
+		select{
+		case masterID = <- masterIDChan:
+			fmt.Println("masteridchan" + masterID)
+		}
 	}
-
 	go udp.UDPUpkeep(peerChan, peerMasterChan, isMaster, localIP, masterIDChan, masterID, UDPoutChan)
-	requests := Orders{};
-	orders := Orders{[1 1 1 1], [1 1 1 1], [1 1 1 1]};
-	elevators := make(map[string]Elevator)
-	elevators["Alice"] = {1,1,1,requests}
-	elevators["Bob"] = {1, 3, 1, requests}
-	message := Message{elevators, orders, "Alice", "Alice", 1}
-	masterMessage <- message
+	if( localIP == "Bob"){
+		requests := Orders{};
+		array := [4]int{1, 1, 1, 1}
+		queue := [4]int{3, 2, 0, 0}
+		orders := Orders{array, array, array};
+		elevators := make(map[string]Elevator)
+		elevators["Alice"] = Elevator{true,1,1,requests, queue}
+		queue = [4]int{1, 0, 0, 0}
+		elevators["Bob"] = Elevator{true,3,1,requests, queue}
+		message := Message{elevators, orders, "Bob", "Alice", 1}
+
+		for{
+			UDPoutChan <- message
+			fmt.Println("I am in the ending loop")
+			time.Sleep(time.Millisecond * 100)
+		}
+	}
 	for{
 		fmt.Println("I am in the ending loop")
 		time.Sleep(time.Second*5)
@@ -56,18 +67,22 @@ func treatMessages(UDPinChan chan Message, UDPoutChan chan Message, masterMessag
 	for{
 		select{
 		case message := <- UDPinChan:
-			if (message.MsgType == 1){
+			if (message.MsgType == 1 && localIP == masterID){
+				fmt.Println("I got an order and my ID is " + localIP)
 				masterMessage <- message
+				break
 			}
 
 			if (message.MsgType == 3){
 				fmt.Println("Someone asked if " + localIP + " is master")
-				Master.amIMaster(message, masterID, UDPoutChan, localIP)
+				master.AmIMaster(message, masterID, UDPoutChan, localIP)
+				break
 			}
 			if(message.MsgType == 4){
 				fmt.Println("I was told that " + message.SenderID + " is the master")
 				masterIDChan <- message.SenderID
 				masterID = message.SenderID
+				break
 			}
 		case masterID = <- masterIDChan:	
 		}
