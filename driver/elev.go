@@ -75,7 +75,38 @@ func elev_stop_at_floor() { //1 sets the light, 0 clears it
 	Io_clear_bit(LIGHT_DOOR_OPEN)
 }
 
-func elev_go_to_floor(floor int, kill chan bool, stopped_at_floor chan int /*,status chan int,elevator */) { //Returns if the requested floor is out of range. Stops the elevator if something is written to kill
+func elev_go_to_floor(target chan int) { //Returns if the requested floor is out of range. Stops the elevator if something is written to kill
+floor 			:= elev_check_floor_sensor()
+current_target 	:= floor
+
+	for{
+		dummy := elev_check_floor_sensor()
+		if dummy != 0{
+			floor = dummy
+
+		}
+		select{
+			case current_target = <- target:
+
+			default:
+				if current_target > FLOORS || current_target <1{
+					continue
+				}
+				if current_target == floor {
+					elev_go(0)
+					elev_stop_at_floor()
+				}
+				if current_target > floor {
+					elev_go(1)
+				}
+				if current_target < floor {
+					elev_go(-1)
+				}
+	
+		}
+	}
+}
+/*func elev_go_to_floor(floor int, kill chan bool, stopped_at_floor chan int) { //Returns if the requested floor is out of range. Stops the elevator if something is written to kill
 	if floor > FLOORS || floor < 1 {
 		return
 	}
@@ -94,7 +125,6 @@ func elev_go_to_floor(floor int, kill chan bool, stopped_at_floor chan int /*,st
 				elev_go(0)
 				elev_stop_at_floor()
 				stopped_at_floor <- floor
-				return
 			}
 			if last_floor > floor {
 				elev_go(-1)
@@ -105,7 +135,7 @@ func elev_go_to_floor(floor int, kill chan bool, stopped_at_floor chan int /*,st
 
 		}
 	}
-}
+}*/
 
 func elev_check_buttons(button_presses chan Orders) {
 	button_inputs := Orders{}
@@ -153,24 +183,27 @@ func elev_light_controller(orders chan Orders) {
 }
 
 func elev_check_motordir() int {
+
 	return Io_read_bit(MOTORDIR)
 }
 
 func elev_status_checker(status chan Elevator) {
-	status_elev := Elevator{}
-	status_change := false
+	status_elev 	:= Elevator{}
+	status_change 	:= false
+
 	for {
-		fmt.Println("Checking for a change")
 		floor := elev_check_floor_sensor()
 		if floor != status_elev.Floor && floor != 0 {
 			status_elev.Floor = floor
 			status_change = true
 		}
+
 		dir := elev_check_motordir()
 		if dir != status_elev.Direction {
 			status_elev.Direction = dir
 			status_change = true
 		}
+
 		if status_change {
 			status <- status_elev
 			status_change = false
@@ -179,30 +212,31 @@ func elev_status_checker(status chan Elevator) {
 }
 
 func Elev_driver(incm_elev_update chan Elevator, out_elev_update chan Elevator) int {
-	//--------Start the status checker---
+	//---Create channels------------------------------
+	target 			:= make(chan int)
+	lights 			:= make(chan Orders)
+	status 			:= make(chan Elevator)
 
-	//--------Init of driver-------------
+	//---Init of driver-------------------------------
 	init_result := elev_init()
 	if init_result == 0 {
 		fmt.Println("Init failed")
 		return 0 //The elevator failed to initialize
 	}
-	local_lift := Elevator{}
 
-	kill := make(chan bool, 1)
-	find_next_floor := make(chan int)
-	lights := make(chan Orders)
-
+	//---Start light controller and status checker----
 	go elev_light_controller(lights)
+	go elev_status_checker(status)
+	go elev_go_to_floor(target)
 
-	//----------Normal operation-----------
+	//---Normal operation-----------------------------
 	for {
 		select {
-		case local_lift = <-incm_elev_update:
-			kill <- true
-			go elev_go_to_floor(local_lift.Queue[0], kill, find_next_floor)
+		case local_lift := <-incm_elev_update:
+			target <- local_lift.Queue[0]
 			lights <- local_lift.Requests
-			continue
+		case lift_status := <- status:
+			out_elev_update <- lift_status
 		}
 	}
 }
@@ -263,19 +297,24 @@ func pause() {
 }
 
 func Elev_test() {
+	into_elev 	:= make(chan Elevator)
+	outof_elev 	:= make(chan Elevator)
 
-	Io_init()
-	into_elev := make(chan Elevator, 1)
-	outof_elev := make(chan Elevator, 1)
-	go elev_status_checker(into_elev)
 
 	go Elev_driver(into_elev, outof_elev)
 
-	for {
-		select {
-		case el := <-into_elev:
-			fmt.Println(el.Direction)
-			fmt.Println(el.Floor)
-		}
+
+
+	foo := Elevator{}
+
+	foo.Queue= [4]int{4,1,1,1}	
+	into_elev <- foo
+
+	time.Sleep(time.Second*3)
+	
+
+	foo.Queue= [4]int{1,1,1,1}	
+	into_elev <- foo
+
+	for {}
 	}
-}
