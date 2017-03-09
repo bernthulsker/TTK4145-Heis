@@ -48,6 +48,7 @@ func elev_go_to_floor(target chan int) { //Returns if the requested floor is out
 			case current_target = <- target:
 
 			default:
+				time.Sleep(time.Millisecond * 10)
 				if current_target > FLOORS || current_target <1{
 					continue
 				}
