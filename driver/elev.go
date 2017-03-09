@@ -2,9 +2,7 @@ package driver
 
 import (
 	. "../definitions"
-	//"bufio"
 	"fmt"
-	//"os"
 	"time"
 )
 
@@ -21,6 +19,7 @@ func elev_init() int { //Initilizes the elevator and the IO. Returns 0 if init f
 	return (elev_check_floor_sensor())
 }
 
+
 func elev_go(dir int) { //Dir =1, elevator goes up. Dir = 0, elevator stops, Dir = -1 elevator goes down.
 	if dir == -1 {
 		Io_set_bit(MOTORDIR)
@@ -34,6 +33,46 @@ func elev_go(dir int) { //Dir =1, elevator goes up. Dir = 0, elevator stops, Dir
 		Io_write_analog(MOTOR, 0)
 	}
 }
+
+func elev_go_to_floor(target chan int) { //Returns if the requested floor is out of range. Stops the elevator if something is written to kill
+	floor 			:= elev_check_floor_sensor()
+	current_target 	:= floor
+
+	for{
+		dummy := elev_check_floor_sensor()
+		if dummy != 0{
+			floor = dummy
+
+		}
+		select{
+			case current_target = <- target:
+
+			default:
+				if current_target > FLOORS || current_target <1{
+					continue
+				}
+				if current_target == floor {
+					elev_go(0)
+					elev_stop_at_floor()
+				}
+				if current_target > floor {
+					elev_go(1)
+				}
+				if current_target < floor {
+					elev_go(-1)
+				}
+	
+		}
+	}
+}
+
+func elev_stop_at_floor() { //1 sets the light, 0 clears it
+	Io_set_bit(LIGHT_DOOR_OPEN)
+	time.Sleep(time.Second * 1)
+	Io_clear_bit(LIGHT_DOOR_OPEN)
+}
+
+
 
 func elev_set_floor_light(floor int) {
 	if floor == 1 {
@@ -69,73 +108,6 @@ func elev_check_floor_sensor() int { //Returns the floor if the elevator is ther
 	return 0
 }
 
-func elev_stop_at_floor() { //1 sets the light, 0 clears it
-	Io_set_bit(LIGHT_DOOR_OPEN)
-	time.Sleep(time.Second * 1)
-	Io_clear_bit(LIGHT_DOOR_OPEN)
-}
-
-func elev_go_to_floor(target chan int) { //Returns if the requested floor is out of range. Stops the elevator if something is written to kill
-floor 			:= elev_check_floor_sensor()
-current_target 	:= floor
-
-	for{
-		dummy := elev_check_floor_sensor()
-		if dummy != 0{
-			floor = dummy
-
-		}
-		select{
-			case current_target = <- target:
-
-			default:
-				if current_target > FLOORS || current_target <1{
-					continue
-				}
-				if current_target == floor {
-					elev_go(0)
-					elev_stop_at_floor()
-				}
-				if current_target > floor {
-					elev_go(1)
-				}
-				if current_target < floor {
-					elev_go(-1)
-				}
-	
-		}
-	}
-}
-/*func elev_go_to_floor(floor int, kill chan bool, stopped_at_floor chan int) { //Returns if the requested floor is out of range. Stops the elevator if something is written to kill
-	if floor > FLOORS || floor < 1 {
-		return
-	}
-	var last_floor int
-	for {
-		temp := elev_check_floor_sensor()
-		if temp != 0 {
-			last_floor = temp
-		}
-		select {
-		case <-kill:
-			elev_go(0)
-			return
-		default:
-			if last_floor == floor {
-				elev_go(0)
-				elev_stop_at_floor()
-				stopped_at_floor <- floor
-			}
-			if last_floor > floor {
-				elev_go(-1)
-			}
-			if last_floor < floor {
-				elev_go(1)
-			}
-
-		}
-	}
-}*/
 
 func elev_check_buttons(button_presses chan Orders) {
 	button_inputs := Orders{}
@@ -191,22 +163,32 @@ func elev_status_checker(status chan Elevator) {
 	status_elev 	:= Elevator{}
 	status_change 	:= false
 
+	buttons := make(chan Orders)
+	go elev_check_buttons(buttons)
+
 	for {
-		floor := elev_check_floor_sensor()
-		if floor != status_elev.Floor && floor != 0 {
-			status_elev.Floor = floor
+		select{
+		case presses := <- buttons:
+			status_elev.Order = presses
 			status_change = true
-		}
-
-		dir := elev_check_motordir()
-		if dir != status_elev.Direction {
-			status_elev.Direction = dir
-			status_change = true
-		}
-
-		if status_change {
-			status <- status_elev
-			status_change = false
+		default:
+			floor := elev_check_floor_sensor()
+				if floor != status_elev.Floor && floor != 0 {
+					status_elev.Floor = floor
+					status_change = true
+				}
+	
+				dir := elev_check_motordir()
+				if dir != status_elev.Direction {
+					status_elev.Direction = dir
+					status_change = true
+				}
+	
+			if status_change {
+				status <- status_elev
+				status_elev = Elevator{}
+				status_change = false
+			}
 		}
 	}
 }
@@ -234,55 +216,14 @@ func Elev_driver(incm_elev_update chan Elevator, out_elev_update chan Elevator) 
 		select {
 		case local_lift := <-incm_elev_update:
 			target <- local_lift.Queue[0]
-			lights <- local_lift.Requests
+			lights <- local_lift.Light
 		case lift_status := <- status:
 			out_elev_update <- lift_status
 		}
 	}
 }
 
-/*
-func Elev_driver(incm_elev_update chan Elevator, out_elev_update chan Elevator) int {
-	//--------Init of driver-------------
-	init_result := elev_init()
-	if init_result == 0 {
-		fmt.Println("Init failed")
-		return 0 //The elevator failed to initialize
-	}
-	local_lift := Elevator{}
-	last_target := 0
 
-	kill := make(chan bool, 1)
-	find_next_floor := make(chan int)
-	lights := make(chan Orders)
-	i := 0
-
-	go elev_light_controller(lights)
-
-	//----------Normal operation-----------
-	for {
-		select {
-		case local_lift = <-incm_elev_update:
-			i = 0
-			kill <- true
-			go elev_go_to_floor(local_lift.Queue[i], kill, find_next_floor)
-			lights <- local_lift.Requests
-			continue
-		case <-find_next_floor:
-			i++
-		default:
-			if i >= FLOORS {
-				continue
-			}
-			if last_target != local_lift.Queue[i] {
-				last_target = local_lift.Queue[i]
-				go elev_go_to_floor(local_lift.Queue[i], kill, find_next_floor)
-			}
-
-		}
-	}
-}
-*/
 
 func pause() {
 	t := time.Now()
@@ -318,3 +259,6 @@ func Elev_test() {
 
 	for {}
 	}
+
+
+
