@@ -18,13 +18,13 @@ type Elevator struct {
 	Alive     		bool
 	Floor     		int //Last floor visited
 	Direction 		int
-	Requests  		Orders
+	Light	  		Orders
+	Order     		Orders
 	Queue     		[FLOORS]int //First element of list is current target of the elevator, 2nd element is next...
 }
 
 type Message struct {
 	Elevators  		map[string]Elevator
-	Order      		Orders
 	SenderID   		string
 	RecieverID 		string
 	MsgType    		int //Message identifier, 1 is input, 2 is queue,
@@ -32,7 +32,7 @@ type Message struct {
 
 
 type PeerUpdate struct {
-	Peers []string
-	New   string
-	Lost  []string
+	Peers 			[]string
+	New   			string
+	Lost  			[]string
 }
