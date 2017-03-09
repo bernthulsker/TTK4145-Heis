@@ -2,30 +2,32 @@ package master
 
 import (
 	."../definitions"
-	"../udp/peers"
 	"fmt"
 )
 
 
 
-func MasterLoop(isMaster chan bool, masterMessage chan Message, peerChan chan peers.PeerUpdate){
+func MasterLoop(isMaster chan bool, masterMessage chan Message, peerChan chan PeerUpdate){
 	fmt.Println("MasterLoop")
-	companions := peers.PeerUpdate{}
+	companions := PeerUpdate{}
+	messageChan := make(chan Message)
 	for{
 		select{
 		case  <- isMaster:
 			fmt.Println("I AM MASTA")
 			for{
+				go calculateOptimalElevator(messageChan. companions.Peers)
 				select{
 				case <- isMaster:
 					break
 
 				case message := <- masterMessage:
 					if (message.MsgType == 1){
-						//message1 := calculateOptimalElevator(message, companions.Peers)
-						fmt.Println(message.Elevators)
+						messageChan <- message
 					}
 
+				case message := <- messageChan:
+					fmt.Println()
 				case companions = <- peerChan:
 					fmt.Println(companions)
 
@@ -38,64 +40,69 @@ func MasterLoop(isMaster chan bool, masterMessage chan Message, peerChan chan pe
 	}
 }
 
-func calculateOptimalElevator(message Message, companions []string) (Message) {
-	leastCostID := ""
-	firstZero := 0
-	sender := message.SenderID
-	orders  := message.Order
+func calculateOptimalElevator(messageChan chan Message, companions []string){
+	for{
+		select{
+		case message := <-messageChan:
+			fmt.Println("Calculating optimal elevator")
+			leastCostID := ""
+			firstZero := 0
+			sender := message.SenderID
+			orders  := message.Order
 
-	//Calculate optimal elevator for external up orders
-	for order := range orders.ExtUpOrders{
-		if(order == 0){
-			continue
-		} else{
-			leastCostID, firstZero = calculateOptimalElevatorAssignment(message, companions, order)
-			temp := message.Elevators[leastCostID]
-			temp.Requests.ExtUpOrders[order] = 1
-			if(firstZero == -1){
-				continue
-			} else{
-				temp.Queue[firstZero] = order
-				message.Elevators[leastCostID]= temp
-			}
-		}
-	}
-	//Calculate optimal elevator for external down orders
-	for order := range orders.ExtDwnOrders{
-		if(order == 0){
-			continue
-		} else{
-			leastCostID, firstZero = calculateOptimalElevatorAssignment(message, companions, order)
-			temp := message.Elevators[leastCostID]
-			temp.Requests.ExtDwnOrders[order] = 1
-			if(firstZero == -1){
-				continue
-			} else{
-				temp.Queue[firstZero] = order
-				message.Elevators[leastCostID]= temp
-			}
-		}
-	}
-	//Give internal orders to the right elevator
-	queue := message.Elevators[sender].Queue
-	for order := range orders.IntOrders{
-		if (order == 0){
-			continue
-		} else {
-			for i,queueElement := range queue{
-				if( order == queueElement){
-					break
-				} 
-				if (queueElement == 0){
-					temp := message.Elevators[sender]
-					temp.Queue[i] = order
-					temp.Requests.IntOrders[order] = 1
-					message.Elevators[sender] = temp
+			//Calculate optimal elevator for external up orders
+			for order := range orders.ExtUpOrders{
+				if(order == 0){
+					continue
+				} else{
+					//leastCostID, firstZero = calculateOptimalElevatorAssignment(message, companions, order)
+					temp := message.Elevators[leastCostID]
+					temp.Requests.ExtUpOrders[order] = 1
+					if(firstZero == -1){
+						continue
+					} else{
+						temp.Queue[firstZero] = order
+						message.Elevators[leastCostID]= temp
+					}
 				}
 			}
+			//Calculate optimal elevator for external down orders
+			for order := range orders.ExtDwnOrders{
+				if(order == 0){
+					continue
+				} else{
+					//leastCostID, firstZero = calculateOptimalElevatorAssignment(message, companions, order)
+					temp := message.Elevators[leastCostID]
+					temp.Requests.ExtDwnOrders[order] = 1
+					if(firstZero == -1){
+						continue
+					} else{
+						temp.Queue[firstZero] = order
+						message.Elevators[leastCostID]= temp
+					}
+				}
+			}
+			//Give internal orders to the right elevator
+			queue := message.Elevators[sender].Queue
+			for order := range orders.IntOrders{
+				if (order == 0){
+					continue
+				} else {
+					for i,queueElement := range queue{
+						if( order == queueElement){
+							break
+						} 
+						if (queueElement == 0){
+							temp := message.Elevators[sender]
+							temp.Queue[i] = order
+							temp.Requests.IntOrders[order] = 1
+							message.Elevators[sender] = temp
+						}
+					}
+				}
+			}
+			messageChan <- message
 		}
-	}
-	return message
 }
 
 func calculateOptimalElevatorAssignment(message Message, companions []string, order int) (string, int){
@@ -103,6 +110,7 @@ func calculateOptimalElevatorAssignment(message Message, companions []string, or
 	leastCost := 0
 	cost := 0
 	firstZero := 0
+	lastElement := 0
 	for _,companion := range companions{
 		companionFloor := message.Elevators[companion].Floor
 		companionQueue := message.Elevators[companion].Queue
@@ -116,7 +124,9 @@ func calculateOptimalElevatorAssignment(message Message, companions []string, or
 				}
 				continue
 			} else{
-				cost = cost + abs(queueElement - companionQueue[i-1])
+				if(i == 0){ lastElement = companionFloor}else
+				{lastElement = companionQueue[i-1]}
+				cost = cost + abs(queueElement - lastElement)
 			}
 		}
 		cost = cost + abs(companionFloor-order)

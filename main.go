@@ -1,10 +1,9 @@
 package main
 
 import (
+	. "./definitions"
 	"./udp"
 	"./master"
-	. "./definitions"
-	"./udp/peers"
 	"time"
 	"fmt"
 )
@@ -16,8 +15,8 @@ func main(){
 	//Make channels
 	UDPoutChan := make (chan Message)
 	UDPinChan := make (chan Message)
-	peerChan := make(chan peers.PeerUpdate)
-	peerMasterChan := make(chan peers.PeerUpdate)
+	peerChan := make(chan PeerUpdate)
+	peerMasterChan := make(chan PeerUpdate)
 	isMaster := make(chan bool)
 	masterIDChan := make(chan string)
 	masterMessage := make(chan Message)
@@ -49,11 +48,11 @@ func main(){
 		elevators["Bob"] = Elevator{true,3,1,requests, queue}
 		message := Message{elevators, orders, "Bob", "Alice", 1}
 
-		for{
+		//for{
 			UDPoutChan <- message
-			fmt.Println("I am in the ending loop")
-			time.Sleep(time.Millisecond * 100)
-		}
+			//fmt.Println("I am in the ending loop")
+			//time.Sleep(time.Millisecond * 10)
+		//}
 	}
 	for{
 		fmt.Println("I am in the ending loop")

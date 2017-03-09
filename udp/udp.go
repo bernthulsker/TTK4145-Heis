@@ -11,7 +11,7 @@ import (
 )
 
 
-func UDPInit(UDPoutChan chan Message, UDPinChan chan Message, isMaster chan bool, masterIDChan chan string, peerChan chan peers.PeerUpdate) (localIP string) {
+func UDPInit(UDPoutChan chan Message, UDPinChan chan Message, isMaster chan bool, masterIDChan chan string, peerChan chan PeerUpdate) (localIP string) {
 	fmt.Println("UDPinit")
 
 	localIP, err := localip.LocalIP()
@@ -29,7 +29,7 @@ func UDPInit(UDPoutChan chan Message, UDPinChan chan Message, isMaster chan bool
 	return localIP	
 }
 
-func MasterInit(peerChan chan peers.PeerUpdate, isMaster chan bool, localIP string, UDPoutChan chan Message) (masterID string){
+func MasterInit(peerChan chan PeerUpdate, isMaster chan bool, localIP string, UDPoutChan chan Message) (masterID string){
 	fmt.Println("masterInit")
 	select{
 	case peerInfo := <- peerChan:
@@ -45,50 +45,57 @@ func MasterInit(peerChan chan peers.PeerUpdate, isMaster chan bool, localIP stri
 	return masterID
 }
 
-func UDPUpkeep(peerChan chan peers.PeerUpdate, peerMasterChan chan peers.PeerUpdate, isMaster chan bool, localIP string, masterIDChan chan string, masterID string, UDPoutChan chan Message){
+func UDPUpkeep(peerChan chan PeerUpdate, peerMasterChan chan PeerUpdate, isMaster chan bool, localIP string, masterIDChan chan string, masterID string, UDPoutChan chan Message){
 	for{
-		select {
-		case peerInfo := <-peerChan:
-			fmt.Println("Peerupdate")
+		Upkeep:
+			select {
+			case peerInfo := <-peerChan:
+				fmt.Println("Peerupdate")
 
-			companions := peerInfo.Peers
-			lostCompanions := peerInfo.Lost
-			newCompanion := peerInfo.New
-			for _, lostCompanion := range lostCompanions{
-				fmt.Println(lostCompanion + masterID)
-				if(lostCompanion == masterID){
-					masterID = ""
-					for _,companion := range companions{
-					fmt.Println(companion)
-						if (masterID == ""){
-							masterID = companion
+				companions := peerInfo.Peers
+				lostCompanions := peerInfo.Lost
+				newCompanion := peerInfo.New
+				for _, lostCompanion := range lostCompanions{
+					if(lostCompanion == masterID){
+						masterID = ""
+						for _,companion := range companions{
+							if (masterID == ""){
+								masterID = companion
+							}
+							if (companion < masterID){
+								masterID = companion
+							}
 						}
-						if (companion < masterID){
-							masterID = companion
+						if( masterID == localIP){
+							isMaster <- true
+							peerMasterChan <- peerInfo
 						}
-					}
-					if( masterID == localIP){
-						isMaster <- true
-						peerMasterChan <- peerInfo
-					}
-					masterIDChan <- masterID
-				}
-			}
-			if(masterID == localIP && newCompanion != ""){
-				go askAboutMaster(newCompanion, localIP, UDPoutChan)
-				select{
-				case otherMasterID := <- masterIDChan:
-					if(otherMasterID < masterID){
-						isMaster <- false
-						masterID = otherMasterID
+						masterIDChan <- masterID
 					}
 				}
+				if(masterID == localIP && newCompanion != ""){
+					go askAboutMaster(newCompanion, localIP, UDPoutChan)
+					ticker := time.NewTicker(time.Second * 1).C 
+					i := 0
+					select{
+					case otherMasterID := <- masterIDChan:
+						if(otherMasterID < masterID){
+							isMaster <- false
+							masterID = otherMasterID
+						}
+					case <- ticker:
+						go askAboutMaster(newCompanion, localIP, UDPoutChan)						//rebroadcasting if there is no reply
+						i+=1
+						if(i > 5){
+							break Upkeep
+						}
+					}
+				}
 			}
-		}
 	}
 }
 
-func askPeersAboutMaster(peerChan chan peers.PeerUpdate, localIP string, UDPoutChan chan Message){
+func askPeersAboutMaster(peerChan chan PeerUpdate, localIP string, UDPoutChan chan Message){
 	select{
 	case peerInfo := <- peerChan:
 		companions := peerInfo.Peers
@@ -106,19 +113,22 @@ func askAboutMaster(companion string, localIP string, UDPoutChan chan Message) {
 	msg.RecieverID = companion
 	UDPoutChan <- msg
 	fmt.Println("I am finished asking")
+	return
 }
 
 func transmitMessage(UDPoutChan chan Message, localIP string){
 	transmitChan := make(chan Message)
+	echoChan := make(chan Message)
 	go bcast.Transmitter(MESSAGEPORT, transmitChan)
+	go bcast.Receiver(ECHOPORT, echoChan)
 	for{
 		select{
 		case message := <- UDPoutChan:
 			fmt.Println("Transmitting")
-			fmt.Println(message)
-			message.SenderID = localIP 										//adding the localIP as senderID			
+			message.SenderID = localIP 										//adding the localIP as senderID	
+			fmt.Println(message)												
 			transmitChan <- message 										//transmitting the mssage
-			waitForEcho(transmitChan, message)							//start new goroutine who waits for echo
+			waitForEcho(transmitChan, echoChan, message)							//start new goroutine who waits for echo
 		}
 	}
 }
@@ -141,11 +151,9 @@ func recieveMessage(UDPinChan chan Message, localIP string){
 	}
 }
 
-func waitForEcho(transmitChan chan Message, message Message){
+func waitForEcho(transmitChan chan Message, echoChan chan Message, message Message){
 	ticker := time.NewTicker(time.Millisecond * 1000).C 					//waiting one second between resends
-	echoChan := make(chan Message)
 	i := 0
-	go bcast.Receiver(ECHOPORT, echoChan)
 	for{
 		select{
 		case <- ticker:
@@ -157,6 +165,8 @@ func waitForEcho(transmitChan chan Message, message Message){
 				//HER MÅ OGSÅ MELDINGENE SENDES TILBAKE SÅ DE KAN BEHANDLS PÅ NYTT OG SENDES TIL NY RIKTIG PEER
 			}
 		case echo := <-echoChan:
+			fmt.Println("Reieved echo")
+			fmt.Println(echo)
 			if(reflect.DeepEqual(echo.Elevators, message.Elevators) && echo.Order == message.Order && echo.MsgType == message.MsgType){ 
 				fmt.Println("Right echo!")											//checking to see if you recieved the right echo
 				return											
@@ -170,7 +180,7 @@ func sendStatus(localIP string){
 	go peers.Transmitter(STATUSPORT, localIP, transmitStatus)
 }
 
-func recieveStatus(peerChan chan peers.PeerUpdate){
+func recieveStatus(peerChan chan PeerUpdate){
 	//i need another line
 	go peers.Receiver(STATUSPORT, peerChan)
 }

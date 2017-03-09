@@ -29,3 +29,10 @@ type Message struct {
 	RecieverID string
 	MsgType    int //Message identifier, 1 is input, 2 is queue,
 }
+
+
+type PeerUpdate struct {
+	Peers []string
+	New   string
+	Lost  []string
+}

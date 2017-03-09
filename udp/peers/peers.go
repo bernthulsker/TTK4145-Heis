@@ -2,17 +2,14 @@ package peers
 
 import (
 	"../conn"
+	."../../definitions"
 	"fmt"
 	"net"
 	"sort"
 	"time"
 )
 
-type PeerUpdate struct {
-	Peers []string
-	New   string
-	Lost  []string
-}
+
 
 const interval = 15 * time.Millisecond
 const timeout = 50 * time.Millisecond
