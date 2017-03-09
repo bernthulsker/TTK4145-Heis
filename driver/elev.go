@@ -72,8 +72,6 @@ func elev_stop_at_floor() { //1 sets the light, 0 clears it
 	Io_clear_bit(LIGHT_DOOR_OPEN)
 }
 
-
-
 func elev_set_floor_light(floor int) {
 	if floor == 1 {
 		Io_clear_bit(LIGHT_FLOOR_IND1)
@@ -163,6 +161,8 @@ func elev_status_checker(status chan Elevator) {
 	status_elev 	:= Elevator{}
 	status_change 	:= false
 
+	ticker := time.NewTicker(time.Second).C
+
 	buttons := make(chan Orders)
 	go elev_check_buttons(buttons)
 
@@ -170,6 +170,8 @@ func elev_status_checker(status chan Elevator) {
 		select{
 		case presses := <- buttons:
 			status_elev.Order = presses
+			status_change = true
+		case <- ticker:
 			status_change = true
 		default:
 			floor := elev_check_floor_sensor()
@@ -183,10 +185,10 @@ func elev_status_checker(status chan Elevator) {
 					status_elev.Direction = dir
 					status_change = true
 				}
-	
+			}
 			if status_change {
 				status <- status_elev
-				status_elev = Elevator{}
+				status_elev.Order = Orders{}
 				status_change = false
 			}
 		}
