@@ -22,7 +22,7 @@ func main(){
 	masterMessage := make(chan Message)
 	masterID := ""
 
-	go master.MasterLoop(isMaster, masterMessage, peerMasterChan)
+	go master.MasterLoop(isMaster, masterMessage, peerMasterChan, UDPoutChan)
 
 	localIP := udp.UDPInit(UDPoutChan, UDPinChan, isMaster, masterIDChan, peerChan)
 	masterID = udp.MasterInit(peerChan, isMaster, localIP, UDPoutChan)
@@ -66,7 +66,9 @@ func treatMessages(UDPinChan chan Message, UDPoutChan chan Message, masterMessag
 			if (message.MsgType == 1 && localIP == masterID){
 				fmt.Println("I got an order and my ID is " + localIP)
 				masterMessage <- message
-			}	else if (message.MsgType == 3){
+			} else if(message.MSgType == 2){
+				//Send kø til elevmodul!
+			} else if (message.MsgType == 3){
 				fmt.Println("Someone asked if " + localIP + " is master")
 				master.AmIMaster(message, masterID, UDPoutChan, localIP)
 			} else if(message.MsgType == 4){
