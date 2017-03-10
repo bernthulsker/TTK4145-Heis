@@ -6,17 +6,17 @@ import (
 	"time"
 )
 
-func elev_init() int { //Initilizes the elevator and the IO. Returns 0 if init fails. Returns the position the elevator finishes in otherwise.
+func elev_init() int { //Initilizes the elevator and the IO. Returns 0 if init fails. Returns 1 otherwise.
 	if Io_init() == 0 {
 		return 0
 	}
 
 	elev_go(-1)
-	for elev_check_floor_sensor() == 0 {
+	for Io_read_bit(SENSOR_FLOOR1) == 0 && Io_read_bit(SENSOR_FLOOR2)== 0 && Io_read_bit(SENSOR_FLOOR3)== 0 && Io_read_bit(SENSOR_FLOOR4) == 0 {
 	}
 	elev_go(0)
 
-	return (elev_check_floor_sensor())
+	return 1
 }
 
 func elev_go(dir int) { //Dir =1, elevator goes up. Dir = 0, elevator stops, Dir = -1 elevator goes down.
@@ -33,12 +33,18 @@ func elev_go(dir int) { //Dir =1, elevator goes up. Dir = 0, elevator stops, Dir
 	}
 }
 
+func elev_check_floor_sensor1() int{
+	return 1
+}
+
 func elev_go_to_floor(target chan int) { //Returns if the requested floor is out of range. Stops the elevator if something is written to kill
-	floor := elev_check_floor_sensor()
+	
+
+	floor := elev_check_floor_sensor1()
 	current_target := floor
 
 	for {
-		dummy := elev_check_floor_sensor()
+		dummy := elev_check_floor_sensor1()
 		if dummy != 0 {
 			floor = dummy
 
@@ -68,7 +74,7 @@ func elev_go_to_floor(target chan int) { //Returns if the requested floor is out
 
 func elev_stop_at_floor() { //1 sets the light, 0 clears it
 	Io_set_bit(LIGHT_DOOR_OPEN)
-	time.Sleep(time.Second * 3)
+	//time.Sleep(time.Second * 3)
 	Io_clear_bit(LIGHT_DOOR_OPEN)
 }
 
@@ -96,38 +102,59 @@ func elev_set_floor_light(floor int) {
 	return
 }
 
-func elev_check_floor_sensor() int { //Returns the floor if the elevator is there, otherwise returns 0
-	for i := 0; i < FLOORS; i++ {
-		if Io_read_bit(SENSOR_FLOOR1+i) == 1 {
-			elev_set_floor_light(i + 1)
-			return i + 1
+func elev_poll_floor_sensor(floor_sense chan int){ //Returns the floor if the elevator is there, otherwise returns 0
+	floor := -1
+
+	for{
+		
+		for i :=0 ; i< FLOORS; i++{
+			dummy := Io_read_bit(SENSOR_FLOOR1 +i)
+			if dummy == 1{
+				floor = i+1
+				floor_sense <- floor
+				break
+			}else if i == FLOORS -1{
+				floor = 0
+				floor_sense <- floor
+				
+			}
+			
+			time.Sleep(time.Millisecond*75)
 		}
 	}
-	return 0
 }
 
 func elev_check_buttons(button_presses chan Orders) {
 	button_inputs := Orders{}
+	dummy_inputs  := Orders{}
+
 	for {
 		//Reads the internal orders
-		button_inputs.IntOrders[0] = Io_read_bit(BUTTON_COMMAND1)
-		button_inputs.IntOrders[1] = Io_read_bit(BUTTON_COMMAND2)
-		button_inputs.IntOrders[2] = Io_read_bit(BUTTON_COMMAND3)
-		button_inputs.IntOrders[3] = Io_read_bit(BUTTON_COMMAND4)
+		dummy_inputs.IntOrders[0] 		= Io_read_bit(BUTTON_COMMAND1)
+		dummy_inputs.IntOrders[1] 		= Io_read_bit(BUTTON_COMMAND2)
+		dummy_inputs.IntOrders[2] 		= Io_read_bit(BUTTON_COMMAND3)
+		dummy_inputs.IntOrders[3] 		= Io_read_bit(BUTTON_COMMAND4)
 
 		//Reads external up orders
-		button_inputs.ExtUpOrders[0] = Io_read_bit(BUTTON_UP1)
-		button_inputs.ExtUpOrders[1] = Io_read_bit(BUTTON_UP2)
-		button_inputs.ExtUpOrders[2] = Io_read_bit(BUTTON_UP3)
+		dummy_inputs.ExtUpOrders[0] 	= Io_read_bit(BUTTON_UP1)
+		dummy_inputs.ExtUpOrders[1] 	= Io_read_bit(BUTTON_UP2)
+		dummy_inputs.ExtUpOrders[2] 	= Io_read_bit(BUTTON_UP3)
 
 		//Reads external down orders
-		button_inputs.ExtDwnOrders[1] = Io_read_bit(BUTTON_DOWN2)
-		button_inputs.ExtDwnOrders[2] = Io_read_bit(BUTTON_DOWN3)
-		button_inputs.ExtDwnOrders[3] = Io_read_bit(BUTTON_DOWN4)
+		dummy_inputs.ExtDwnOrders[1] 	= Io_read_bit(BUTTON_DOWN2)
+		dummy_inputs.ExtDwnOrders[2] 	= Io_read_bit(BUTTON_DOWN3)
+		dummy_inputs.ExtDwnOrders[3] 	= Io_read_bit(BUTTON_DOWN4)
 
-		if button_inputs.IntOrders[0] == 1 || button_inputs.IntOrders[1] == 1 || button_inputs.IntOrders[2] == 1 || button_inputs.IntOrders[3] == 1 || button_inputs.ExtUpOrders[0] == 1 || button_inputs.ExtUpOrders[1] == 1 || button_inputs.ExtUpOrders[2] == 1 || button_inputs.ExtDwnOrders[1] == 1 || button_inputs.ExtDwnOrders[2] == 1 || button_inputs.ExtDwnOrders[3] == 1 {
-			button_presses <- button_inputs
+		if button_inputs != dummy_inputs && (dummy_inputs.IntOrders[0] == 1 || dummy_inputs.IntOrders[1] == 1 || dummy_inputs.IntOrders[2] == 1 || dummy_inputs.IntOrders[3] == 1 || dummy_inputs.ExtUpOrders[0] == 1 || dummy_inputs.ExtUpOrders[1] == 1 || dummy_inputs.ExtUpOrders[2] == 1 || dummy_inputs.ExtDwnOrders[1] == 1 || dummy_inputs.ExtDwnOrders[2] == 1 || dummy_inputs.ExtDwnOrders[3] == 1) {
+			button_inputs = dummy_inputs
+			fmt.Println(button_inputs)
+			button_presses <- button_inputs	
 		}
+		dummy_inputs2 := Orders{}
+		if dummy_inputs == dummy_inputs2{
+			button_inputs = dummy_inputs
+		}
+		time.Sleep(time.Millisecond*10)
 	}
 }
 
@@ -151,45 +178,41 @@ func elev_light_controller(orders chan Orders) {
 	}
 }
 
-func elev_check_motordir() int {
-
-	return Io_read_bit(MOTORDIR)
+func elev_check_motordir(dir chan int ){
+	direction := -1 
+	for{
+		foo := Io_read_bit(MOTORDIR) 
+		if foo != direction{
+			direction = foo
+			dir <-direction
+		}
+		time.Sleep(time.Millisecond * 100)
+	}
 }
 
 func elev_status_checker(status chan Elevator) {
-	status_elev := Elevator{}
-	status_change := false
+	status_elev 	:= Elevator{}
+	ticker 			:= time.NewTicker(time.Second).C
+	buttons 		:= make(chan Orders)
+	direction 		:= make(chan int)
+	floor_sense 	:= make(chan int)
 
-	ticker := time.NewTicker(time.Second).C
-
-	buttons := make(chan Orders)
+	go elev_poll_floor_sensor(floor_sense)
+	go elev_check_motordir(direction)
 	go elev_check_buttons(buttons)
 
 	for {
 		select {
-		case presses := <-buttons:
-			status_elev.Order = presses
-			status_change = true
-		case <-ticker:
-			status_change = true
-		default:
-			floor := elev_check_floor_sensor()
-			if floor != status_elev.Floor && floor != 0 {
-				status_elev.Floor = floor
-				status_change = true
-			}
-
-			dir := elev_check_motordir()
-			if dir != status_elev.Direction {
+			case presses 	:= <-buttons:
+				status_elev.Order = presses
+			case dir 		:= <- direction:
 				status_elev.Direction = dir
-				status_change = true
+			case 			   <-ticker:
+			case floor   	:= <- floor_sense:
+				status_elev.Floor = floor
 			}
-		}
-		if status_change {
-			status <- status_elev
-			status_elev.Order = Orders{}
-			status_change = false
-		}
+		status <- status_elev
+		status_elev.Order = Orders{}
 	}
 }
 
@@ -197,7 +220,7 @@ func Elev_driver(incm_elev_update chan Elevator, out_elev_update chan Elevator) 
 	//---Create channels------------------------------
 	target := make(chan int)
 	lights := make(chan Orders)
-	//status := make(chan Elevator)
+	status := make(chan Elevator)
 
 	//---Init of driver-------------------------------
 	init_result := elev_init()
@@ -208,19 +231,17 @@ func Elev_driver(incm_elev_update chan Elevator, out_elev_update chan Elevator) 
 
 	//---Start light controller and status checker----
 	go elev_light_controller(lights)
-	//go elev_status_checker(status)
+	go elev_status_checker(status)
 	go elev_go_to_floor(target)
 
 	//---Normal operation-----------------------------
 	for {
-		fmt.Println("Listening for input")
 		select {
 		case local_lift := <-incm_elev_update:
-			fmt.Println(local_lift.Queue[0])
 			target <- local_lift.Queue[0]
 			lights <- local_lift.Light
-			//case lift_status := <-status:
-			//	out_elev_update <- lift_status
+		case lift_status := <-status:
+			out_elev_update <- lift_status
 		}
 	}
 }
@@ -231,31 +252,29 @@ func Elev_test() {
 
 	go Elev_driver(into_elev, outof_elev)
 
-	foo := Elevator{}
+	for{
+		break
+		select{
+		case dummy_elev:= <- outof_elev:
+			dummy_elev2 := Elevator{}
+			target := 1
+			blip := true
+			for i:= 0;i<FLOORS;i++{
+				if dummy_elev.Order.IntOrders[i] == 1{
+					target = i+1
+					blip = false
+				}
+				if blip{
+					break
+				}
+			}
+			dummy_elev2.Queue[0] = target
+			into_elev <- dummy_elev2
+		}
 
-	foo.Queue = [4]int{4, 1, 1, 1}
-	into_elev <- foo
+	}
 
-	time.Sleep(time.Second * 3)
 
-	foo.Queue = [4]int{1, 1, 1, 1}
-	fmt.Println("Sending new order")
-	into_elev <- foo
-	fmt.Println("New order sent")
-
-	time.Sleep(time.Second * 3)
-
-	foo.Queue = [4]int{2, 1, 1, 1}
-	fmt.Println("Sending new order")
-	into_elev <- foo
-	fmt.Println("New order sent")
-
-	time.Sleep(time.Second * 3)
-
-	foo.Queue = [4]int{3, 1, 1, 1}
-	fmt.Println("Sending new order")
-	into_elev <- foo
-	fmt.Println("New order sent")
 
 	select {}
 }
