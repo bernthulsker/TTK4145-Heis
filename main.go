@@ -2,32 +2,49 @@ package main
 
 import (
 	. "./definitions"
+	."./driver"
 	"./udp"
 	"./master"
 	"time"
 	"fmt"
 )
+/*
+Lys
+kjører forbi fjerde
+local mode
+andre etasje wut?
+processing pairs?
+spre ordre ved master død
+genrelle feilmeldinger her og der
+
+concrurent map read write lol wut?
+
+
+*/
+
 
 
 
 
 func main(){
 	//Make channels
-	UDPoutChan := make (chan Message)
-	UDPinChan := make (chan Message)
-	peerChan := make(chan PeerUpdate)
-	peerMasterChan := make(chan PeerUpdate)
-	isMaster := make(chan bool)
-	masterIDChan := make(chan string)
-	masterMessage := make(chan Message)
-	masterID := ""
+	UDPoutChan 		:= make(chan Message)
+	UDPinChan 		:= make(chan Message)
+	masterMessage 	:= make(chan Message)
+	peerChan 		:= make(chan PeerUpdate)
+	peerMasterChan 	:= make(chan PeerUpdate)
+	isMaster 		:= make(chan bool)
+	masterIDChan 	:= make(chan string)
+	elevOut 		:= make(chan Elevator)
+	elevIn 			:= make(chan Elevator)
+	masterID 		:= ""
 
 	go master.MasterLoop(isMaster, masterMessage, peerMasterChan, UDPoutChan)
 
 	localIP := udp.UDPInit(UDPoutChan, UDPinChan, isMaster, masterIDChan, peerChan)
-	masterID = udp.MasterInit(peerChan, isMaster, localIP, UDPoutChan)
+	masterID = udp.MasterInit(peerChan, isMaster, peerMasterChan, localIP, UDPoutChan)
 
-	go treatMessages(UDPinChan, UDPoutChan, masterMessage, masterIDChan, masterID, localIP)
+	go treatMessages(UDPinChan, UDPoutChan, masterMessage, masterIDChan, elevIn, elevOut, masterID, localIP)
 
 	if(masterID == ""){
 		fmt.Println("Waiting for ID...")
@@ -36,23 +53,9 @@ func main(){
 			fmt.Println("masteridchan" + masterID)
 		}
 	}
-	go udp.UDPUpkeep(peerChan, peerMasterChan, isMaster, localIP, masterIDChan, masterID, UDPoutChan)
 
-	if( localIP == "Bob"){
-		lights := Orders{};
-		array := [4]int{1, 1, 1, 1}
-		queue := [4]int{0, 0, 0, 0}
-		orders := Orders{array, array, array};
-		elevators := make(map[string]Elevator)
-		elevators["Alice"] = Elevator{true,1,1,0,lights, orders, queue}
-		queue = [4]int{0, 0, 0, 0}
-		elevators["Bob"] = Elevator{true,3,1,0,lights, orders, queue}
-		message := Message{elevators, "Bob", "Alice", 1}
-		for{
-			UDPoutChan <- message
-			time.Sleep(time.Millisecond*10)
-		}
-	}
+	go Elev_driver(elevIn, elevOut)
+	go udp.UDPUpkeep(peerChan, peerMasterChan, isMaster, localIP, masterIDChan, masterID, UDPoutChan)
 
 	for{
 		fmt.Println("I am in the ending loop")
@@ -61,25 +64,33 @@ func main(){
 }
 
 
-func treatMessages(UDPinChan chan Message, UDPoutChan chan Message, masterMessage chan Message, masterIDChan chan string, masterID string, localIP string){
+func treatMessages(UDPinChan chan Message, UDPoutChan chan Message, masterMessage chan Message, masterIDChan chan string, elevIn chan Elevator, elevOut chan Elevator, masterID string, localIP string){
 	fmt.Println("Treat Messages")
+	messageBackup := Message{}
+	messageBackup.Elevators = make(map[string]Elevator)
 	for{
 		select{
-		case message := <- UDPinChan:
-			if (message.MsgType == 1 && localIP == masterID){
+		case messageBackup = <- UDPinChan:
+			if (messageBackup.MsgType == 1 && localIP == masterID){
 				fmt.Println("I got an order and my ID is " + localIP)
-				masterMessage <- message
-			} else if(message.MsgType == 2){
-				//Send kø til elevmodul!
-			} else if (message.MsgType == 3){
+				masterMessage <- messageBackup
+			} else if(messageBackup.MsgType == 2){
+				elevIn <- messageBackup.Elevators[localIP]
+			} else if (messageBackup.MsgType == 3){
 				fmt.Println("Someone asked if " + localIP + " is master")
-				master.AmIMaster(message, masterID, UDPoutChan, localIP)
-			} else if(message.MsgType == 4){
-				fmt.Println("I was told that " + message.SenderID + " is the master")
-				masterIDChan <- message.SenderID
-				masterID = message.SenderID
+				master.AmIMaster(messageBackup, masterID, UDPoutChan, localIP)
+			} else if(messageBackup.MsgType == 4){
+				fmt.Println("I was told that " + messageBackup.SenderID + " is the master")
+				masterIDChan <- messageBackup.SenderID
+				masterID = messageBackup.SenderID
 			}
-		case masterID = <- masterIDChan:	
+		case masterID = <- masterIDChan:
+
+		case elev_status := <- elevOut:
+			messageBackup.Elevators[localIP] = elev_status
+			messageBackup.MsgType = 1
+			messageBackup.RecieverID = masterID
+			UDPoutChan <- messageBackup 
 		}
 	}
 }
@@ -169,4 +180,19 @@ func treatMessages(UDPinChan chan Message, UDPoutChan chan Message, masterMessag
 		}
 	}
 
+	if( localIP == "Bob"){
+		lights := Orders{};
+		array := [4]int{1, 1, 1, 1}
+		queue := [4]int{0, 0, 0, 0}
+		orders := Orders{array, array, array};
+		elevators := make(map[string]Elevator)
+		elevators["Alice"] = Elevator{true,1,1,0,lights, orders, queue}
+		queue = [4]int{0, 0, 0, 0}
+		elevators["Bob"] = Elevator{true,3,1,0,lights, orders, queue}
+		message := Message{elevators, "Bob", "Alice", 1}
+		for{
+			UDPoutChan <- message
+			time.Sleep(time.Millisecond*10)
+		}
+	}
 	*/

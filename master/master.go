@@ -3,6 +3,7 @@ package master
 import (
 	."../definitions"
 	."fmt"
+	"strconv"
 )
 
 
@@ -25,14 +26,19 @@ func MasterLoop(isMaster chan bool, masterMessage chan Message, peerChan chan Pe
 				case messageBackup = <- masterMessage:
 					Println("master recieved message")
 					senderID := messageBackup.SenderID
-					change := false
+					change1 := false
+					change2 := false
 					if (messageBackup.MsgType == 1){
-						messageBackup.Elevators, change = isTheElevatorFinished(messageBackup.Elevators, senderID)
-						messageBackup.Elevators, change = calculateOptimalElevator(messageBackup.Elevators, senderID)
-						if (change) {
+						messageBackup.Elevators, change1 = isTheElevatorFinished(messageBackup.Elevators, senderID)
+						messageBackup.Elevators, change2 = calculateOptimalElevator(messageBackup.Elevators, senderID)
+						Println(change1)
+						Println(change2)
+						if (change1 || change2) {
+							Println("There was a change!")
 							for _,slave := range slaves.Peers{
 								messageBackup.RecieverID = slave
 								messageBackup.MsgType = 2
+								Println(messageBackup)
 								UDPoutChan <- messageBackup
 							}
 						}
@@ -40,7 +46,6 @@ func MasterLoop(isMaster chan bool, masterMessage chan Message, peerChan chan Pe
 				case slaves = <- peerChan:
 					Println("maser peerupdate")
 					Println(slaves)
-					
 				}
 			}
 		}
@@ -63,13 +68,14 @@ func isTheElevatorFinished(slaves map[string]Elevator, senderIP string) (map[str
 	sender := (slavePointer[senderIP])
 
 
-	if (sender.Position == 0){
+	if (sender.Position != 0){
 		if(sender.Position == sender.Queue[0]){
 			change = true 
 			for i := range sender.Queue{
-				if (i == len(sender.Queue)){
+				if (i == (len(sender.Queue)-1)){
 					sender.Queue[i] = 0
  				} else{
+ 					Println(strconv.Itoa(i))
 					sender.Queue[i] = sender.Queue[i+1] 
 				}
 			}

@@ -103,7 +103,7 @@ func elev_poll_floor_sensor(floor_sense chan int){ //Returns the floor if the el
 	floor := -1
 
 	for{
-		
+		time.Sleep(time.Millisecond*50)
 		for i :=0 ; i< FLOORS; i++{
 			dummy := Io_read_bit(SENSOR_FLOOR1 +i)
 			if dummy == 1{
@@ -116,7 +116,6 @@ func elev_poll_floor_sensor(floor_sense chan int){ //Returns the floor if the el
 				
 			}
 			
-			time.Sleep(time.Millisecond*50)
 		}
 	}
 }
@@ -154,6 +153,8 @@ func elev_check_buttons(button_presses chan Orders) {
 }
 
 func elev_light_controller(orders chan Orders) {
+	floor_light := make(chan int)
+	go elev_poll_floor_sensor(floor_light)
 	for {
 		select {
 		case lights := <-orders:
@@ -169,6 +170,10 @@ func elev_light_controller(orders chan Orders) {
 			Io_write_bit(LIGHT_DOWN2, lights.ExtDwnOrders[1])
 			Io_write_bit(LIGHT_DOWN3, lights.ExtDwnOrders[2])
 			Io_write_bit(LIGHT_DOWN4, lights.ExtDwnOrders[3])
+		case floor := <- floor_light:
+			if floor != 0{
+				elev_set_floor_light(floor)
+			}
 		}
 	}
 }
@@ -233,6 +238,7 @@ func Elev_driver(incm_elev_update chan Elevator, out_elev_update chan Elevator) 
 	for {
 		select {
 		case local_lift := <-incm_elev_update:
+			fmt.Println("Recieving inncomming transmission")
 			target <- local_lift.Queue[0]
 			lights <- local_lift.Light
 		case lift_status := <-status:

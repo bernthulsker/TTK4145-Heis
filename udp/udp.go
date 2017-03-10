@@ -18,7 +18,6 @@ func UDPInit(UDPoutChan chan Message, UDPinChan chan Message, isMaster chan bool
 	if err != nil {
 		return							//FIX HVA SOM SKAL SKJE VED FEIL
 	}
-	localIP = "Bob"
 
 	sendStatus(localIP)
 	recieveStatus(peerChan)
@@ -29,7 +28,7 @@ func UDPInit(UDPoutChan chan Message, UDPinChan chan Message, isMaster chan bool
 	return localIP	
 }
 
-func MasterInit(peerChan chan PeerUpdate, isMaster chan bool, localIP string, UDPoutChan chan Message) (masterID string){
+func MasterInit(peerChan chan PeerUpdate, isMaster chan bool, peerMasterChan chan PeerUpdate, localIP string, UDPoutChan chan Message) (masterID string){
 	fmt.Println("masterInit")
 	select{
 	case peerInfo := <- peerChan:
@@ -37,6 +36,7 @@ func MasterInit(peerChan chan PeerUpdate, isMaster chan bool, localIP string, UD
 		if (companions[0] == localIP ){
 			masterID = localIP
 			isMaster <- true
+			peerMasterChan <- peerInfo
 		} 
 	}
 	if(masterID == ""){
