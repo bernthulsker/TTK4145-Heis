@@ -37,23 +37,20 @@ func main(){
 		}
 	}
 	go udp.UDPUpkeep(peerChan, peerMasterChan, isMaster, localIP, masterIDChan, masterID, UDPoutChan)
+
 	if( localIP == "Bob"){
-		requests := Orders{};
+		lights := Orders{};
 		array := [4]int{1, 1, 1, 1}
-		queue := [4]int{3, 2, 0, 0}
+		queue := [4]int{0, 0, 0, 0}
 		orders := Orders{array, array, array};
 		elevators := make(map[string]Elevator)
-		elevators["Alice"] = Elevator{true,1,1,requests, queue}
-		queue = [4]int{1, 0, 0, 0}
-		elevators["Bob"] = Elevator{true,3,1,requests, queue}
-		message := Message{elevators, orders, "Bob", "Alice", 1}
-
-		//for{
-			UDPoutChan <- message
-			//fmt.Println("I am in the ending loop")
-			//time.Sleep(time.Millisecond * 10)
-		//}
+		elevators["Alice"] = Elevator{true,1,1,lights, orders, queue}
+		queue = [4]int{0, 0, 0, 0}
+		elevators["Bob"] = Elevator{true,3,1,lights, orders, queue}
+		message := Message{elevators, "Bob", "Alice", 1}
+		UDPoutChan <- message
 	}
+
 	for{
 		fmt.Println("I am in the ending loop")
 		time.Sleep(time.Second*5)
@@ -69,19 +66,13 @@ func treatMessages(UDPinChan chan Message, UDPoutChan chan Message, masterMessag
 			if (message.MsgType == 1 && localIP == masterID){
 				fmt.Println("I got an order and my ID is " + localIP)
 				masterMessage <- message
-				break
-			}
-
-			if (message.MsgType == 3){
+			}	else if (message.MsgType == 3){
 				fmt.Println("Someone asked if " + localIP + " is master")
 				master.AmIMaster(message, masterID, UDPoutChan, localIP)
-				break
-			}
-			if(message.MsgType == 4){
+			} else if(message.MsgType == 4){
 				fmt.Println("I was told that " + message.SenderID + " is the master")
 				masterIDChan <- message.SenderID
 				masterID = message.SenderID
-				break
 			}
 		case masterID = <- masterIDChan:	
 		}
