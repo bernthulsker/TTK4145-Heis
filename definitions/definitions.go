@@ -17,6 +17,7 @@ type Orders struct {
 type Elevator struct {
 	Alive     		bool
 	Floor     		int //Last floor visited
+	Position 		int
 	Direction 		int
 	Light	  		Orders
 	Order     		Orders

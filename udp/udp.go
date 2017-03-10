@@ -18,7 +18,7 @@ func UDPInit(UDPoutChan chan Message, UDPinChan chan Message, isMaster chan bool
 	if err != nil {
 		return							//FIX HVA SOM SKAL SKJE VED FEIL
 	}
-	localIP = "Alice"
+	localIP = "Bob"
 
 	sendStatus(localIP)
 	recieveStatus(peerChan)
