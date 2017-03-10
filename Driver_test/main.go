@@ -1,9 +1,8 @@
-package main 
+package main
 
-import(
-."../driver")
-
-
+import (
+	. "../driver"
+)
 
 func main() {
 	Elev_test()

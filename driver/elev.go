@@ -19,7 +19,6 @@ func elev_init() int { //Initilizes the elevator and the IO. Returns 0 if init f
 	return (elev_check_floor_sensor())
 }
 
-
 func elev_go(dir int) { //Dir =1, elevator goes up. Dir = 0, elevator stops, Dir = -1 elevator goes down.
 	if dir == -1 {
 		Io_set_bit(MOTORDIR)
@@ -35,34 +34,34 @@ func elev_go(dir int) { //Dir =1, elevator goes up. Dir = 0, elevator stops, Dir
 }
 
 func elev_go_to_floor(target chan int) { //Returns if the requested floor is out of range. Stops the elevator if something is written to kill
-	floor 			:= elev_check_floor_sensor()
-	current_target 	:= floor
+	floor := elev_check_floor_sensor()
+	current_target := floor
 
-	for{
+	for {
 		dummy := elev_check_floor_sensor()
-		if dummy != 0{
+		if dummy != 0 {
 			floor = dummy
 
 		}
-		select{
-			case current_target = <- target:
+		select {
+		case current_target = <-target:
 
-			default:
-				time.Sleep(time.Millisecond * 10)
-				if current_target > FLOORS || current_target <1{
-					continue
-				}
-				if current_target == floor {
-					elev_go(0)
-					elev_stop_at_floor()
-				}
-				if current_target > floor {
-					elev_go(1)
-				}
-				if current_target < floor {
-					elev_go(-1)
-				}
-	
+		default:
+			time.Sleep(time.Millisecond * 10)
+			if current_target > FLOORS || current_target < 1 {
+				continue
+			}
+			if current_target == floor {
+				elev_go(0)
+				elev_stop_at_floor()
+			}
+			if current_target > floor {
+				elev_go(1)
+			}
+			if current_target < floor {
+				elev_go(-1)
+			}
+
 		}
 	}
 }
@@ -106,7 +105,6 @@ func elev_check_floor_sensor() int { //Returns the floor if the elevator is ther
 	}
 	return 0
 }
-
 
 func elev_check_buttons(button_presses chan Orders) {
 	button_inputs := Orders{}
@@ -159,8 +157,8 @@ func elev_check_motordir() int {
 }
 
 func elev_status_checker(status chan Elevator) {
-	status_elev 	:= Elevator{}
-	status_change 	:= false
+	status_elev := Elevator{}
+	status_change := false
 
 	ticker := time.NewTicker(time.Second).C
 
@@ -168,39 +166,38 @@ func elev_status_checker(status chan Elevator) {
 	go elev_check_buttons(buttons)
 
 	for {
-		select{
-		case presses := <- buttons:
+		select {
+		case presses := <-buttons:
 			status_elev.Order = presses
 			status_change = true
-		case <- ticker:
+		case <-ticker:
 			status_change = true
 		default:
 			floor := elev_check_floor_sensor()
-				if floor != status_elev.Floor && floor != 0 {
-					status_elev.Floor = floor
-					status_change = true
-				}
-	
-				dir := elev_check_motordir()
-				if dir != status_elev.Direction {
-					status_elev.Direction = dir
-					status_change = true
-				}
+			if floor != status_elev.Floor && floor != 0 {
+				status_elev.Floor = floor
+				status_change = true
 			}
-			if status_change {
-				status <- status_elev
-				status_elev.Order = Orders{}
-				status_change = false
+
+			dir := elev_check_motordir()
+			if dir != status_elev.Direction {
+				status_elev.Direction = dir
+				status_change = true
 			}
+		}
+		if status_change {
+			status <- status_elev
+			status_elev.Order = Orders{}
+			status_change = false
 		}
 	}
 }
 
 func Elev_driver(incm_elev_update chan Elevator, out_elev_update chan Elevator) int {
 	//---Create channels------------------------------
-	target 			:= make(chan int)
-	lights 			:= make(chan Orders)
-	status 			:= make(chan Elevator)
+	target := make(chan int)
+	lights := make(chan Orders)
+	status := make(chan Elevator)
 
 	//---Init of driver-------------------------------
 	init_result := elev_init()
@@ -220,13 +217,11 @@ func Elev_driver(incm_elev_update chan Elevator, out_elev_update chan Elevator) 
 		case local_lift := <-incm_elev_update:
 			target <- local_lift.Queue[0]
 			lights <- local_lift.Light
-		case lift_status := <- status:
+		case lift_status := <-status:
 			out_elev_update <- lift_status
 		}
 	}
 }
-
-
 
 func pause() {
 	t := time.Now()
@@ -241,27 +236,20 @@ func pause() {
 }
 
 func Elev_test() {
-	into_elev 	:= make(chan Elevator)
-	outof_elev 	:= make(chan Elevator)
-
+	into_elev := make(chan Elevator)
+	outof_elev := make(chan Elevator)
 
 	go Elev_driver(into_elev, outof_elev)
 
-
-
 	foo := Elevator{}
 
-	foo.Queue= [4]int{4,1,1,1}	
+	foo.Queue = [4]int{4, 1, 1, 1}
 	into_elev <- foo
 
-	time.Sleep(time.Second*3)
-	
+	time.Sleep(time.Second * 3)
 
-	foo.Queue= [4]int{1,1,1,1}	
+	foo.Queue = [4]int{1, 1, 1, 1}
 	into_elev <- foo
 
-	for {}
-	}
-
-
-
+	select {}
+}
