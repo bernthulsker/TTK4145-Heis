@@ -68,7 +68,7 @@ func elev_go_to_floor(target chan int) { //Returns if the requested floor is out
 
 func elev_stop_at_floor() { //1 sets the light, 0 clears it
 	Io_set_bit(LIGHT_DOOR_OPEN)
-	time.Sleep(time.Second * 1)
+	time.Sleep(time.Second * 3)
 	Io_clear_bit(LIGHT_DOOR_OPEN)
 }
 
@@ -197,7 +197,7 @@ func Elev_driver(incm_elev_update chan Elevator, out_elev_update chan Elevator) 
 	//---Create channels------------------------------
 	target := make(chan int)
 	lights := make(chan Orders)
-	status := make(chan Elevator)
+	//status := make(chan Elevator)
 
 	//---Init of driver-------------------------------
 	init_result := elev_init()
@@ -208,30 +208,20 @@ func Elev_driver(incm_elev_update chan Elevator, out_elev_update chan Elevator) 
 
 	//---Start light controller and status checker----
 	go elev_light_controller(lights)
-	go elev_status_checker(status)
+	//go elev_status_checker(status)
 	go elev_go_to_floor(target)
 
 	//---Normal operation-----------------------------
 	for {
+		fmt.Println("Listening for input")
 		select {
 		case local_lift := <-incm_elev_update:
+			fmt.Println(local_lift.Queue[0])
 			target <- local_lift.Queue[0]
 			lights <- local_lift.Light
-		case lift_status := <-status:
-			out_elev_update <- lift_status
+			//case lift_status := <-status:
+			//	out_elev_update <- lift_status
 		}
-	}
-}
-
-func pause() {
-	t := time.Now()
-	h, m, s := t.Clock()
-	for {
-		fmt.Println("Vi kommer snart tilbake. Vært borte siden:", h, m, s)
-		sin := time.Since(t)
-		fmt.Println("Som er så lenge siden:", sin)
-		time.Sleep(time.Second * 1)
-
 	}
 }
 
@@ -249,7 +239,35 @@ func Elev_test() {
 	time.Sleep(time.Second * 3)
 
 	foo.Queue = [4]int{1, 1, 1, 1}
+	fmt.Println("Sending new order")
 	into_elev <- foo
+	fmt.Println("New order sent")
+
+	time.Sleep(time.Second * 3)
+
+	foo.Queue = [4]int{2, 1, 1, 1}
+	fmt.Println("Sending new order")
+	into_elev <- foo
+	fmt.Println("New order sent")
+
+	time.Sleep(time.Second * 3)
+
+	foo.Queue = [4]int{3, 1, 1, 1}
+	fmt.Println("Sending new order")
+	into_elev <- foo
+	fmt.Println("New order sent")
 
 	select {}
+}
+
+func pause() {
+	t := time.Now()
+	h, m, s := t.Clock()
+	for {
+		fmt.Println("Vi kommer snart tilbake. Vært borte siden:", h, m, s)
+		sin := time.Since(t)
+		fmt.Println("Som er så lenge siden:", sin)
+		time.Sleep(time.Second * 1)
+
+	}
 }
