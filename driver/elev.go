@@ -33,48 +33,45 @@ func elev_go(dir int) { //Dir =1, elevator goes up. Dir = 0, elevator stops, Dir
 	}
 }
 
-func elev_check_floor_sensor1() int{
-	return 1
-}
 
 func elev_go_to_floor(target chan int) { //Returns if the requested floor is out of range. Stops the elevator if something is written to kill
-	
-
-	floor := elev_check_floor_sensor1()
-	current_target := floor
-
-	for {
-		dummy := elev_check_floor_sensor1()
-		if dummy != 0 {
-			floor = dummy
-
-		}
-		select {
-		case current_target = <-target:
-
-		default:
-			time.Sleep(time.Millisecond * 10)
-			if current_target > FLOORS || current_target < 1 {
-				continue
-			}
-			if current_target == floor {
+	floor := make(chan int)
+	go elev_poll_floor_sensor(floor)
+	current_target 	:= 	<- floor
+	current_floor 	:= current_target
+	has_stopped		:= true
+	for{
+		select{
+		case current_target = <- target:
+			
+			if current_target == current_floor {
 				elev_go(0)
 				elev_stop_at_floor()
 			}
-			if current_target > floor {
+			if current_target > current_floor {
 				elev_go(1)
+				has_stopped = false
 			}
-			if current_target < floor {
+			if current_target < current_floor {
 				elev_go(-1)
+				has_stopped = false
 			}
-
+		case current_floor = <- floor:
+				if current_target == current_floor {
+				elev_go(0)
+				if (!has_stopped){
+					has_stopped = true
+					elev_stop_at_floor()
+				}
+			}
 		}
 	}
 }
 
-func elev_stop_at_floor() { //1 sets the light, 0 clears it
+func elev_stop_at_floor() { 
+	fmt.Println("stopping")
 	Io_set_bit(LIGHT_DOOR_OPEN)
-	//time.Sleep(time.Second * 3)
+	time.Sleep(time.Second * 3)
 	Io_clear_bit(LIGHT_DOOR_OPEN)
 }
 
@@ -119,7 +116,7 @@ func elev_poll_floor_sensor(floor_sense chan int){ //Returns the floor if the el
 				
 			}
 			
-			time.Sleep(time.Millisecond*75)
+			time.Sleep(time.Millisecond*50)
 		}
 	}
 }
@@ -144,15 +141,13 @@ func elev_check_buttons(button_presses chan Orders) {
 		dummy_inputs.ExtDwnOrders[1] 	= Io_read_bit(BUTTON_DOWN2)
 		dummy_inputs.ExtDwnOrders[2] 	= Io_read_bit(BUTTON_DOWN3)
 		dummy_inputs.ExtDwnOrders[3] 	= Io_read_bit(BUTTON_DOWN4)
+		
+		
 
-		if button_inputs != dummy_inputs && (dummy_inputs.IntOrders[0] == 1 || dummy_inputs.IntOrders[1] == 1 || dummy_inputs.IntOrders[2] == 1 || dummy_inputs.IntOrders[3] == 1 || dummy_inputs.ExtUpOrders[0] == 1 || dummy_inputs.ExtUpOrders[1] == 1 || dummy_inputs.ExtUpOrders[2] == 1 || dummy_inputs.ExtDwnOrders[1] == 1 || dummy_inputs.ExtDwnOrders[2] == 1 || dummy_inputs.ExtDwnOrders[3] == 1) {
+		if button_inputs != dummy_inputs {
+		//if button_inputs != dummy_inputs && (dummy_inputs.IntOrders[0] == 1 || dummy_inputs.IntOrders[1] == 1 || dummy_inputs.IntOrders[2] == 1 || dummy_inputs.IntOrders[3] == 1 || dummy_inputs.ExtUpOrders[0] == 1 || dummy_inputs.ExtUpOrders[1] == 1 || dummy_inputs.ExtUpOrders[2] == 1 || dummy_inputs.ExtDwnOrders[1] == 1 || dummy_inputs.ExtDwnOrders[2] == 1 || dummy_inputs.ExtDwnOrders[3] == 1) {
 			button_inputs = dummy_inputs
-			fmt.Println(button_inputs)
 			button_presses <- button_inputs	
-		}
-		dummy_inputs2 := Orders{}
-		if dummy_inputs == dummy_inputs2{
-			button_inputs = dummy_inputs
 		}
 		time.Sleep(time.Millisecond*10)
 	}
@@ -253,31 +248,25 @@ func Elev_test() {
 	go Elev_driver(into_elev, outof_elev)
 
 	for{
-		break
 		select{
 		case dummy_elev:= <- outof_elev:
 			dummy_elev2 := Elevator{}
-			target := 1
-			blip := true
-			for i:= 0;i<FLOORS;i++{
-				if dummy_elev.Order.IntOrders[i] == 1{
-					target = i+1
-					blip = false
-				}
-				if blip{
+
+			for i,j := range dummy_elev.Order.IntOrders{
+				if j == 1{
+					dummy_elev2.Queue[0] = i+1
 					break
 				}
 			}
-			dummy_elev2.Queue[0] = target
-			into_elev <- dummy_elev2
+			if (dummy_elev2.Queue[0] != 0){
+				into_elev <- dummy_elev2	
+			}
+
+			}
+		
 		}
-
-	}
-
-
-
 	select {}
-}
+	}
 
 func pause() {
 	t := time.Now()
