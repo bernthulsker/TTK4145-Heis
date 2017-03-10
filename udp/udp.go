@@ -167,7 +167,7 @@ func waitForEcho(transmitChan chan Message, echoChan chan Message, message Messa
 		case echo := <-echoChan:
 			fmt.Println("Reieved echo")
 			fmt.Println(echo)
-			if(reflect.DeepEqual(echo.Elevators, message.Elevators) && echo.Order == message.Order && echo.MsgType == message.MsgType){ 
+			if(reflect.DeepEqual(echo.Elevators, message.Elevators) && echo.MsgType == message.MsgType){ 
 				fmt.Println("Right echo!")											//checking to see if you recieved the right echo
 				return											
 			}														//when the right echo were recieved, stop the echo
