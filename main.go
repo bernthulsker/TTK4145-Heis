@@ -44,11 +44,14 @@ func main(){
 		queue := [4]int{0, 0, 0, 0}
 		orders := Orders{array, array, array};
 		elevators := make(map[string]Elevator)
-		elevators["Alice"] = Elevator{true,1,1,lights, orders, queue}
+		elevators["Alice"] = Elevator{true,1,1,0,lights, orders, queue}
 		queue = [4]int{0, 0, 0, 0}
-		elevators["Bob"] = Elevator{true,3,1,lights, orders, queue}
+		elevators["Bob"] = Elevator{true,3,1,0,lights, orders, queue}
 		message := Message{elevators, "Bob", "Alice", 1}
-		UDPoutChan <- message
+		for{
+			UDPoutChan <- message
+			time.Sleep(time.Millisecond*10)
+		}
 	}
 
 	for{
@@ -66,7 +69,7 @@ func treatMessages(UDPinChan chan Message, UDPoutChan chan Message, masterMessag
 			if (message.MsgType == 1 && localIP == masterID){
 				fmt.Println("I got an order and my ID is " + localIP)
 				masterMessage <- message
-			} else if(message.MSgType == 2){
+			} else if(message.MsgType == 2){
 				//Send kø til elevmodul!
 			} else if (message.MsgType == 3){
 				fmt.Println("Someone asked if " + localIP + " is master")

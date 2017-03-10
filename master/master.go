@@ -3,7 +3,6 @@ package master
 import (
 	."../definitions"
 	."fmt"
-	"strconv"
 )
 
 
@@ -28,10 +27,10 @@ func MasterLoop(isMaster chan bool, masterMessage chan Message, peerChan chan Pe
 					senderID := messageBackup.SenderID
 					change := false
 					if (messageBackup.MsgType == 1){
-						messageBackup.Elevators[senderID], change = isTheElevatorFinished
+						messageBackup.Elevators, change = isTheElevatorFinished(messageBackup.Elevators, senderID)
 						messageBackup.Elevators, change = calculateOptimalElevator(messageBackup.Elevators, senderID)
 						if (change) {
-							for slave := range slaves.Peers{
+							for _,slave := range slaves.Peers{
 								messageBackup.RecieverID = slave
 								messageBackup.MsgType = 2
 								UDPoutChan <- messageBackup
@@ -48,9 +47,25 @@ func MasterLoop(isMaster chan bool, masterMessage chan Message, peerChan chan Pe
 	}
 }
 
-func isTheElevatorFinished(sender Elevator) (Elevator, bool){
+func isTheElevatorFinished(slaves map[string]Elevator, senderIP string) (map[string]Elevator, bool){
+	slavePointer := make(map[string]*Elevator)
+	var slavetemp [ELEVATORS]Elevator
+	change := false
+	i :=0
+
+	//making a map with pointers that is possible to change
+	for key := range slaves{
+		slavetemp[i] = slaves[key]
+		slavePointer[key] = &(slavetemp[i])
+		i++
+	}
+	
+	sender := (slavePointer[senderIP])
+
+
 	if (sender.Position == 0){
 		if(sender.Position == sender.Queue[0]){
+			change = true 
 			for i := range sender.Queue{
 				if (i == len(sender.Queue)){
 					sender.Queue[i] = 0
@@ -58,13 +73,19 @@ func isTheElevatorFinished(sender Elevator) (Elevator, bool){
 					sender.Queue[i] = sender.Queue[i+1] 
 				}
 			}
-			return sender, true
 		}
 	}
-	return sender, false
+
+
+	//converting the map back to normal map without pointers
+	elementMap := make(map[string]Elevator)
+	for key, element := range slavePointer{
+		elementMap[key] = *element
+	}
+	return elementMap, change
 }
 
-func calculateOptimalElevator(slaves map[string]Elevator, sender string) (map[string]Elevator, bool){
+func calculateOptimalElevator(slaves map[string]Elevator, senderIP string) (map[string]Elevator, bool){
 	Println("Calculating optimal elevator")
 	leastCostID := ""
 	firstZero := 0
@@ -79,7 +100,7 @@ func calculateOptimalElevator(slaves map[string]Elevator, sender string) (map[st
 		slavePointer[key] = &(slavetemp[i])
 		i++
 	}
-	senderElevator := (slavePointer[sender])
+	senderElevator := (slavePointer[senderIP])
 	orders := senderElevator.Order
 
 	//Calculate optimal elevator for external up orders
@@ -87,7 +108,7 @@ func calculateOptimalElevator(slaves map[string]Elevator, sender string) (map[st
 		if(order == 0){
 			continue
 		} else{
-			change := true
+			change = true
 			leastCostID, firstZero = calculateOptimalElevatorAssignment(slavePointer, i+1)
 			optimalSlave := slavePointer[leastCostID]
 			(*optimalSlave).Light.ExtUpOrders[i] = 1
@@ -103,7 +124,7 @@ func calculateOptimalElevator(slaves map[string]Elevator, sender string) (map[st
 		if(order == 0){
 			continue
 		} else{
-			change := true
+			change = true
 			leastCostID, firstZero = calculateOptimalElevatorAssignment(slavePointer, i)
 			optimalSlave := *(slavePointer[leastCostID])
 			optimalSlave.Light.ExtUpOrders[i] = 1
@@ -115,12 +136,12 @@ func calculateOptimalElevator(slaves map[string]Elevator, sender string) (map[st
 		}
 	}
 	//Give internal orders to the right elevator
-	senderElevator = (slavePointer[sender])	
+	senderElevator = (slavePointer[senderIP])	
 	for i,order := range orders.IntOrders{
 		if (order == 0){
 			continue
 		} else {
-			change := true
+			change = true
 			senderElevator.Light.IntOrders[i] = 1
 			for j,queueElement := range senderElevator.Queue{
 				if( i+1 == queueElement){
