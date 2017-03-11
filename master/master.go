@@ -8,7 +8,9 @@ import (
 
 
 
-func MasterLoop(isMaster chan bool, masterMessage chan Message, peerChan chan PeerUpdate, UDPoutChan chan Message){
+func MasterLoop(isMaster 	chan bool, 			masterMessage 	chan Message, 
+				peerChan 	chan PeerUpdate, 	UDPoutChan 		chan Message){
+	
 	Println("MasterLoop")
 	slaves := PeerUpdate{}
 	messageBackup := Message{}
@@ -110,14 +112,14 @@ func calculateOptimalElevator(slaves map[string]Elevator, senderIP string) (map[
 	orders := senderElevator.Order
 
 	//Calculate optimal elevator for external up orders
-	for i,order := range orders.ExtUpOrders{
+	for i,order := range orders.ExtUpButtons{
 		if(order == 0){
 			continue
 		} else{
 			change = true
 			leastCostID, firstZero = calculateOptimalElevatorAssignment(slavePointer, i+1)
 			optimalSlave := slavePointer[leastCostID]
-			(*optimalSlave).Light.ExtUpOrders[i] = 1
+			(*optimalSlave).Light.ExtUpButtons[i] = 1
 			if(firstZero == -1){
 				continue
 			} else{
@@ -126,14 +128,14 @@ func calculateOptimalElevator(slaves map[string]Elevator, senderIP string) (map[
 		}
 	}
 	//Calculate optimal elevator for external down orders
-	for i,order := range orders.ExtDwnOrders{
+	for i,order := range orders.ExtDwnButtons{
 		if(order == 0){
 			continue
 		} else{
 			change = true
-			leastCostID, firstZero = calculateOptimalElevatorAssignment(slavePointer, i)
+			leastCostID, firstZero = calculateOptimalElevatorAssignment(slavePointer, i+1)
 			optimalSlave := *(slavePointer[leastCostID])
-			optimalSlave.Light.ExtUpOrders[i] = 1
+			optimalSlave.Light.ExtUpButtons[i] = 1
 			if(firstZero == -1){
 				continue
 			} else{
@@ -143,12 +145,12 @@ func calculateOptimalElevator(slaves map[string]Elevator, senderIP string) (map[
 	}
 	//Give internal orders to the right elevator
 	senderElevator = (slavePointer[senderIP])	
-	for i,order := range orders.IntOrders{
+	for i,order := range orders.IntButtons{
 		if (order == 0){
 			continue
 		} else {
 			change = true
-			senderElevator.Light.IntOrders[i] = 1
+			senderElevator.Light.IntButtons[i] = 1
 			for j,queueElement := range senderElevator.Queue{
 				if( i+1 == queueElement){
 					break

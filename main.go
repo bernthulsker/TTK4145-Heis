@@ -2,22 +2,23 @@ package main
 
 import (
 	. "./definitions"
-	."./driver"
+	//."./driver"
 	"./udp"
 	"./master"
 	"time"
 	"fmt"
 )
 /*
-Lys
-kjører forbi fjerde
+At ordre plasserers i kø og at ikke heisen bare hopper rett videre om det kommer ordre			<---- DETTE SKAL VÆRE GOOD. Måtte endre litt i eleven din Jon
+Lys																								<---- MULIG AT ORDREFIX ORDNET DETTE OGSÅ
+kjører forbi fjerde												<---- MÅ VEL SJEKKES PÅ LAB
 local mode
-andre etasje wut?
+andre etasje wut?												<---- MÅ VEL SJEKKES PÅ LAB
 processing pairs?
 spre ordre ved master død
 genrelle feilmeldinger her og der
 
-concrurent map read write lol wut?
+concrurent map read write lol wut?					<----- SLITER MED Å FREMPROVOSERE DETTE IGJEN, GJØR DET VANSKELIG Å DEBUGGE
 
 
 */
@@ -54,17 +55,31 @@ func main(){
 		}
 	}
 
-	go Elev_driver(elevIn, elevOut)
+	ones := 	[4]int{1, 1, 1, 1}
+	order := 	Buttons{ones, ones, ones}
+	light := 	Buttons{}
+	queue := 	[4]int{3,2,0,0}
+	elevator :=	Elevator{1,0,1,light,order,queue}
+	//go Elev_driver(elevIn, elevOut)
 	go udp.UDPUpkeep(peerChan, peerMasterChan, isMaster, localIP, masterIDChan, masterID, UDPoutChan)
 
 	for{
-		fmt.Println("I am in the ending loop")
-		time.Sleep(time.Second*5)
+		select{
+		case elevator = <- elevIn:
+		default:
+			elevOut <- elevator
+			fmt.Println("I am in the ending loop")
+			time.Sleep(time.Millisecond*10)
+		}
 	}
 }
 
 
-func treatMessages(UDPinChan chan Message, UDPoutChan chan Message, masterMessage chan Message, masterIDChan chan string, elevIn chan Elevator, elevOut chan Elevator, masterID string, localIP string){
+func treatMessages(	UDPinChan 		chan Message, 	UDPoutChan 		chan Message, 
+					masterMessage 	chan Message, 	masterIDChan 	chan string, 
+					elevIn 			chan Elevator, 	elevOut 		chan Elevator, 
+					masterID 		string, 		localIP 		string){
+
 	fmt.Println("Treat Messages")
 	messageBackup := Message{}
 	messageBackup.Elevators = make(map[string]Elevator)

@@ -1,37 +1,37 @@
 package definitions
 
-const MOTOR_SPEED int = 2800
+const MOTOR_SPEED 	int = 2800
 
-const ELEVATORS int = 3
-const FLOORS int = 4
-const MESSAGEPORT int = 20200
-const ECHOPORT int = 20201
-const STATUSPORT int = 20202
+const ELEVATORS 	int = 3
+const FLOORS 		int = 4
+const MESSAGEPORT 	int = 20200
+const ECHOPORT 		int = 20201
+const STATUSPORT 	int = 20202
 
-type Orders struct {
-	IntOrders    [FLOORS]int
-	ExtUpOrders  [FLOORS]int
-	ExtDwnOrders [FLOORS]int //0 for external, 1 for internal
+type Buttons struct {
+	IntButtons    	[FLOORS]int
+	ExtUpButtons  	[FLOORS]int
+	ExtDwnButtons 	[FLOORS]int 		
 }
 
 type Elevator struct {
-	Floor     int //Last floor visited
-	Position  int //SONDRE MÅ FÅ VITE HVOR HEISEN ER !!!!!!! "get some help"
-	Direction int
-	Light     Orders
-	Order     Orders
-	Queue     [FLOORS]int //First element of list is current target of the elevator, 2nd element is next...
+	Floor     		int 				//Last floor visited
+	Position  		int 				//SONDRE MÅ FÅ VITE HVOR HEISEN ER !!!!!!! "get some help"
+	Direction 		int
+	Light     		Buttons
+	Order     		Buttons
+	Queue     		[FLOORS]int 		//First element of list is current target of the elevator, 2nd element is next...
 }
 
 type Message struct {
-	Elevators  map[string]Elevator
-	SenderID   string
-	RecieverID string
-	MsgType    int //Message identifier, 1 is input, 2 is queue,
+	Elevators  		map[string]Elevator
+	SenderID   		string
+	RecieverID 		string
+	MsgType    		int 				//Message identifier, 1 is input, 2 is queue,
 }
 
 type PeerUpdate struct {
-	Peers []string
-	New   string
-	Lost  []string
+	Peers 			[]string
+	New   			string
+	Lost  			[]string
 }

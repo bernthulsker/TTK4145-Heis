@@ -120,26 +120,26 @@ func elev_poll_floor_sensor(floor_sense chan int){ //Returns the floor if the el
 	}
 }
 
-func elev_check_buttons(button_presses chan Orders) {
-	button_inputs := Orders{}
-	dummy_inputs  := Orders{}
+func elev_check_buttons(button_presses chan Buttons) {
+	button_inputs := Buttons{}
+	dummy_inputs  := Buttons{}
 
 	for {
 		//Reads the internal orders
-		dummy_inputs.IntOrders[0] 		= Io_read_bit(BUTTON_COMMAND1)
-		dummy_inputs.IntOrders[1] 		= Io_read_bit(BUTTON_COMMAND2)
-		dummy_inputs.IntOrders[2] 		= Io_read_bit(BUTTON_COMMAND3)
-		dummy_inputs.IntOrders[3] 		= Io_read_bit(BUTTON_COMMAND4)
+		dummy_inputs.IntButtons[0] 		= Io_read_bit(BUTTON_COMMAND1)
+		dummy_inputs.IntButtons[1] 		= Io_read_bit(BUTTON_COMMAND2)
+		dummy_inputs.IntButtons[2] 		= Io_read_bit(BUTTON_COMMAND3)
+		dummy_inputs.IntButtons[3] 		= Io_read_bit(BUTTON_COMMAND4)
 
 		//Reads external up orders
-		dummy_inputs.ExtUpOrders[0] 	= Io_read_bit(BUTTON_UP1)
-		dummy_inputs.ExtUpOrders[1] 	= Io_read_bit(BUTTON_UP2)
-		dummy_inputs.ExtUpOrders[2] 	= Io_read_bit(BUTTON_UP3)
+		dummy_inputs.ExtUpButtons[0] 	= Io_read_bit(BUTTON_UP1)
+		dummy_inputs.ExtUpButtons[1] 	= Io_read_bit(BUTTON_UP2)
+		dummy_inputs.ExtUpButtons[2] 	= Io_read_bit(BUTTON_UP3)
 
 		//Reads external down orders
-		dummy_inputs.ExtDwnOrders[1] 	= Io_read_bit(BUTTON_DOWN2)
-		dummy_inputs.ExtDwnOrders[2] 	= Io_read_bit(BUTTON_DOWN3)
-		dummy_inputs.ExtDwnOrders[3] 	= Io_read_bit(BUTTON_DOWN4)
+		dummy_inputs.ExtDwnButtons[1] 	= Io_read_bit(BUTTON_DOWN2)
+		dummy_inputs.ExtDwnButtons[2] 	= Io_read_bit(BUTTON_DOWN3)
+		dummy_inputs.ExtDwnButtons[3] 	= Io_read_bit(BUTTON_DOWN4)
 		
 		
 
@@ -148,28 +148,28 @@ func elev_check_buttons(button_presses chan Orders) {
 			button_inputs = dummy_inputs
 			button_presses <- button_inputs	
 		}
-		time.Sleep(time.Millisecond*10)
+		time.Sleep(time.Millisecond*50)
 	}
 }
 
-func elev_light_controller(orders chan Orders) {
+func elev_light_controller(orders chan Buttons) {
 	floor_light := make(chan int)
 	go elev_poll_floor_sensor(floor_light)
 	for {
 		select {
 		case lights := <-orders:
-			Io_write_bit(LIGHT_COMMAND1, lights.IntOrders[0])
-			Io_write_bit(LIGHT_COMMAND3, lights.IntOrders[2])
-			Io_write_bit(LIGHT_COMMAND2, lights.IntOrders[1])
-			Io_write_bit(LIGHT_COMMAND4, lights.IntOrders[3])
+			Io_write_bit(LIGHT_COMMAND1, lights.IntButtons[0])
+			Io_write_bit(LIGHT_COMMAND3, lights.IntButtons[2])
+			Io_write_bit(LIGHT_COMMAND2, lights.IntButtons[1])
+			Io_write_bit(LIGHT_COMMAND4, lights.IntButtons[3])
 
-			Io_write_bit(LIGHT_UP1, lights.ExtUpOrders[0])
-			Io_write_bit(LIGHT_UP2, lights.ExtUpOrders[1])
-			Io_write_bit(LIGHT_UP3, lights.ExtUpOrders[2])
+			Io_write_bit(LIGHT_UP1, lights.ExtUpButtons[0])
+			Io_write_bit(LIGHT_UP2, lights.ExtUpButtons[1])
+			Io_write_bit(LIGHT_UP3, lights.ExtUpButtons[2])
 
-			Io_write_bit(LIGHT_DOWN2, lights.ExtDwnOrders[1])
-			Io_write_bit(LIGHT_DOWN3, lights.ExtDwnOrders[2])
-			Io_write_bit(LIGHT_DOWN4, lights.ExtDwnOrders[3])
+			Io_write_bit(LIGHT_DOWN2, lights.ExtDwnButtons[1])
+			Io_write_bit(LIGHT_DOWN3, lights.ExtDwnButtons[2])
+			Io_write_bit(LIGHT_DOWN4, lights.ExtDwnButtons[3])
 		case floor := <- floor_light:
 			if floor != 0{
 				elev_set_floor_light(floor)
@@ -193,7 +193,7 @@ func elev_check_motordir(dir chan int ){
 func elev_status_checker(status chan Elevator) {
 	status_elev 	:= Elevator{}
 	ticker 			:= time.NewTicker(time.Second).C
-	buttons 		:= make(chan Orders)
+	buttons 		:= make(chan Buttons)
 	direction 		:= make(chan int)
 	floor_sense 	:= make(chan int)
 
@@ -203,24 +203,29 @@ func elev_status_checker(status chan Elevator) {
 
 	for {
 		select {
-			case presses 	:= <-buttons:
-				status_elev.Order = presses
-			case dir 		:= <- direction:
-				status_elev.Direction = dir
-			case 			   <-ticker:
-			case floor   	:= <- floor_sense:
-				status_elev.Floor = floor
-			}
-		status <- status_elev
-		status_elev.Order = Orders{}
+		case presses 	:= <-buttons:
+			status_elev.Order = presses
+			status <- status_elev
+			status_elev.Order = Buttons{}
+		case dir 		:= <- direction:
+			status_elev.Direction = dir
+			status <- status_elev
+		case 			   <-ticker:
+			status <- status_elev
+		case floor   	:= <- floor_sense:
+			status_elev.Floor = floor
+			status <- status_elev
+		case status_elev = <- status:
+		}
 	}
 }
 
 func Elev_driver(incm_elev_update chan Elevator, out_elev_update chan Elevator) int {
 	//---Create channels------------------------------
 	target := make(chan int)
-	lights := make(chan Orders)
+	lights := make(chan Buttons)
 	status := make(chan Elevator)
+
 
 	//---Init of driver-------------------------------
 	init_result := elev_init()
@@ -241,6 +246,7 @@ func Elev_driver(incm_elev_update chan Elevator, out_elev_update chan Elevator) 
 			fmt.Println("Recieving inncomming transmission")
 			target <- local_lift.Queue[0]
 			lights <- local_lift.Light
+			status <- local_lift
 		case lift_status := <-status:
 			out_elev_update <- lift_status
 		}
