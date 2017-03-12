@@ -10,11 +10,15 @@ func Elev_init(target chan int, lights chan Buttons, statusIn chan Elevator, sta
 	if Io_init() == 0 {
 		return 0
 	}
+	elev_clear_lights()
 
 	elev_go(-1)
 	for Io_read_bit(SENSOR_FLOOR1) == 0 && Io_read_bit(SENSOR_FLOOR2)== 0 && Io_read_bit(SENSOR_FLOOR3)== 0 && Io_read_bit(SENSOR_FLOOR4) == 0 {
 	}
 	elev_go(0)
+
+
+
 
 	//---Start light controller and status checker----
 	go elev_light_controller(lights)
@@ -185,6 +189,25 @@ func elev_light_controller(orders chan Buttons) {
 			}
 		}
 	}
+}
+
+func elev_clear_lights(){
+	Io_clear_bit(LIGHT_COMMAND1)
+	Io_clear_bit(LIGHT_COMMAND3)
+	Io_clear_bit(LIGHT_COMMAND2)
+	Io_clear_bit(LIGHT_COMMAND4)
+
+	Io_clear_bit(LIGHT_UP1)
+	Io_clear_bit(LIGHT_UP2)
+	Io_clear_bit(LIGHT_UP3)
+
+	Io_clear_bit(LIGHT_DOWN2)
+	Io_clear_bit(LIGHT_DOWN3)
+	Io_clear_bit(LIGHT_DOWN4)
+
+	Io_clear_bit(LIGHT_DOOR_OPEN)
+
+	Io_clear_bit(STOP)
 }
 
 func elev_check_motordir(dir chan int ){
