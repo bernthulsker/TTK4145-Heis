@@ -68,8 +68,9 @@ func IsTheElevatorFinished(slaves map[string]Elevator, senderIP string) (map[str
 	}
 	
 	sender := (slavePointer[senderIP])
-	if (sender.Position != 0){
-		if(sender.Position == sender.Queue[0]){
+	position := sender.Position
+	if (position != 0){
+		if(position == sender.Queue[0]){
 			change = true 
 			for i := range sender.Queue{
 				if (i == (len(sender.Queue)-1)){
@@ -79,14 +80,14 @@ func IsTheElevatorFinished(slaves map[string]Elevator, senderIP string) (map[str
 				}
 			}
 			if (position == 1){
-				sender.Light.ExtUpButtons[(sender.Position-1)] = 0
+				sender.Light.ExtUpButtons[(position-1)] = 0
 			} else if (position == 4){
-				sender.Light.ExtDwnButtons[(sender.Position-2)] = 0
+				sender.Light.ExtDwnButtons[(position-2)] = 0
 			} else{ 
-				sender.Light.ExtUpButtons[(sender.Position-1)] = 0
-				sender.Light.ExtDwnButtons[(sender.Position-2)] = 0
+				sender.Light.ExtUpButtons[(position-1)] = 0
+				sender.Light.ExtDwnButtons[(position-2)] = 0
 			}
-			sender.Light.IntButtons[sender.Position-1] = 0
+			sender.Light.IntButtons[position-1] = 0
 		}
 	}
 
