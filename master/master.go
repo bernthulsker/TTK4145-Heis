@@ -20,7 +20,7 @@ func MasterLoop(isMaster 	chan bool, 			masterMessage 	chan Message,
 			Println("I AM MASTA")
 			Master:
 			for{
-				select{
+				select{									
 				case <- isMaster:
 					Println("Break master")
 					break Master
@@ -77,7 +77,6 @@ func isTheElevatorFinished(slaves map[string]Elevator, senderIP string) (map[str
 				if (i == (len(sender.Queue)-1)){
 					sender.Queue[i] = 0
  				} else{
- 					Println(strconv.Itoa(i))
 					sender.Queue[i] = sender.Queue[i+1] 
 				}
 			}
@@ -93,7 +92,7 @@ func isTheElevatorFinished(slaves map[string]Elevator, senderIP string) (map[str
 	return elementMap, change
 }
 
-func calculateOptimalElevator(slaves map[string]Elevator, senderIP string) (map[string]Elevator, bool){
+func CalculateOptimalElevator(slaves map[string]Elevator, senderIP string) (map[string]Elevator, bool){
 	Println("Calculating optimal elevator")
 	leastCostID := ""
 	firstZero := 0
@@ -135,7 +134,7 @@ func calculateOptimalElevator(slaves map[string]Elevator, senderIP string) (map[
 			change = true
 			leastCostID, firstZero = calculateOptimalElevatorAssignment(slavePointer, i+1)
 			optimalSlave := *(slavePointer[leastCostID])
-			optimalSlave.Light.ExtUpButtons[i] = 1
+			optimalSlave.Light.ExtDwnButtons[i] = 1
 			if(firstZero == -1){
 				continue
 			} else{

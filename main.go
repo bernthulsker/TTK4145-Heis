@@ -2,7 +2,7 @@ package main
 
 import (
 	. "./definitions"
-	//."./driver"
+	"./driver"
 	"./udp"
 	"./master"
 	"time"
@@ -40,37 +40,20 @@ func main(){
 	elevIn 			:= make(chan Elevator)
 	masterID 		:= ""
 
+	localIP := udp.UDPInit(UDPoutChan, UDPinChan, peerChan)
+
 	go master.MasterLoop(isMaster, masterMessage, peerMasterChan, UDPoutChan)
+	go treatMessages(UDPinChan, UDPoutChan, masterMessage, masterIDChan, elevIn, elevOut, localIP)
 
-	localIP := udp.UDPInit(UDPoutChan, UDPinChan, isMaster, masterIDChan, peerChan)
-	masterID = udp.MasterInit(peerChan, isMaster, peerMasterChan, localIP, UDPoutChan)
+	masterID = udp.MasterInit(peerChan, isMaster, peerMasterChan, localIP, UDPoutChan, masterIDChan)
 
-	go treatMessages(UDPinChan, UDPoutChan, masterMessage, masterIDChan, elevIn, elevOut, masterID, localIP)
-
-	if(masterID == ""){
-		fmt.Println("Waiting for ID...")
-		select{
-		case masterID = <- masterIDChan:
-			fmt.Println("masteridchan" + masterID)
-		}
-	}
-
-	ones := 	[4]int{1, 1, 1, 1}
-	order := 	Buttons{ones, ones, ones}
-	light := 	Buttons{}
-	queue := 	[4]int{3,2,0,0}
-	elevator :=	Elevator{1,0,1,light,order,queue}
-	//go Elev_driver(elevIn, elevOut)
+	
+	//go driver.Elev_driver(elevIn, elevOut)
 	go udp.UDPUpkeep(peerChan, peerMasterChan, isMaster, localIP, masterIDChan, masterID, UDPoutChan)
 
 	for{
-		select{
-		case elevator = <- elevIn:
-		default:
-			elevOut <- elevator
-			fmt.Println("I am in the ending loop")
-			time.Sleep(time.Millisecond*10)
-		}
+		fmt.Println("Im in the ending loop")
+		time.Sleep(time.Second*1)
 	}
 }
 
@@ -78,38 +61,76 @@ func main(){
 func treatMessages(	UDPinChan 		chan Message, 	UDPoutChan 		chan Message, 
 					masterMessage 	chan Message, 	masterIDChan 	chan string, 
 					elevIn 			chan Elevator, 	elevOut 		chan Elevator, 
-					masterID 		string, 		localIP 		string){
+					localIP 		string){
 
 	fmt.Println("Treat Messages")
 	messageBackup := Message{}
 	messageBackup.Elevators = make(map[string]Elevator)
+	masterID := ""
 	for{
 		select{
 		case messageBackup = <- UDPinChan:
 			if (messageBackup.MsgType == 1 && localIP == masterID){
 				fmt.Println("I got an order and my ID is " + localIP)
 				masterMessage <- messageBackup
-			} else if(messageBackup.MsgType == 2){
+			} else if (messageBackup.MsgType == 2){
 				elevIn <- messageBackup.Elevators[localIP]
 			} else if (messageBackup.MsgType == 3){
 				fmt.Println("Someone asked if " + localIP + " is master")
 				master.AmIMaster(messageBackup, masterID, UDPoutChan, localIP)
-			} else if(messageBackup.MsgType == 4){
+			} else if (messageBackup.MsgType == 4){
 				fmt.Println("I was told that " + messageBackup.SenderID + " is the master")
 				masterIDChan <- messageBackup.SenderID
 				masterID = messageBackup.SenderID
 			}
 		case masterID = <- masterIDChan:
+			fmt.Println("I got a masterID")
 
 		case elev_status := <- elevOut:
 			messageBackup.Elevators[localIP] = elev_status
 			messageBackup.MsgType = 1
 			messageBackup.RecieverID = masterID
-			UDPoutChan <- messageBackup 
+			UDPoutChan <- messageBackup                	
 		}
 	}
 }
 
+func LocalMode(internetConnection chan bool) (string){
+	elevOut 	:= make(chan Elevator)
+	elevIn 		:= make(chan Elevator)
+	elevators 	:= make(map[string]Elevator)
+	localIP  	:= ""
+	change 		:= false
+	go driver.Elev_driver(elevOut, elevIn)
+	for{
+		select{
+		case elevator := <- elevOut:
+			elevators[localIP] = elevator
+			elevators[localIP], change = master.CalculateOptimalElevator(elevators, localIP)
+			if(change){
+				elevIn <- elevators[localIP]
+				change = false
+			}
+		}
+		case <- internetConnection:
+			return
+	}
+}
+
+
+
+func sendElevator(elevOut chan Elevator){
+	ones := 	[4]int{1, 1, 1, 1}
+	order := 	Buttons{ones, ones, ones}
+	light := 	Buttons{}
+	queue := 	[4]int{3,2,0,0}
+	elevator :=	Elevator{1,0,1,light,order,queue}
+	for{
+		elevOut <- elevator                               	
+		fmt.Println("I am in the ending loop")
+		time.Sleep(time.Millisecond*10)
+	}
+}
 
 
 

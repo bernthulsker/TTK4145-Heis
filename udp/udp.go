@@ -11,24 +11,31 @@ import (
 )
 
 
-func UDPInit(UDPoutChan chan Message, UDPinChan chan Message, isMaster chan bool, masterIDChan chan string, peerChan chan PeerUpdate) (localIP string) {
+func UDPInit(UDPoutChan chan Message, UDPinChan chan Message, peerChan chan PeerUpdate) (localIP string) {
 	fmt.Println("UDPinit")
+	internetConnection := make(chan bool)
+	go LocalMode(internetConnection)
+	for{
+		localIP, err := localip.LocalIP()
+		if err != nil {
+			continue
+		} else {
+			internetConnection <- true
+			sendStatus(localIP)
+			recieveStatus(peerChan)
 
-	localIP, err := localip.LocalIP()
-	if err != nil {
-		return							//FIX HVA SOM SKAL SKJE VED FEIL
-	}
-
-	sendStatus(localIP)
-	recieveStatus(peerChan)
-
-	go transmitMessage(UDPoutChan, localIP)
-	go recieveMessage(UDPinChan, localIP)
-	
-	return localIP	
+			go transmitMessage(UDPoutChan, localIP)
+			go recieveMessage(UDPinChan, localIP)
+		
+			return localIP
+		}
+		time.Sleep(time.Second)
+	}	
 }
 
-func MasterInit(peerChan chan PeerUpdate, isMaster chan bool, peerMasterChan chan PeerUpdate, localIP string, UDPoutChan chan Message) (masterID string){
+func MasterInit(peerChan 		chan PeerUpdate, 	isMaster chan bool, 
+				peerMasterChan 	chan PeerUpdate, 	localIP string, 
+				UDPoutChan 		chan Message, 		masterIDChan chan string) (masterID string){
 	fmt.Println("masterInit")
 	select{
 	case peerInfo := <- peerChan:
@@ -36,16 +43,25 @@ func MasterInit(peerChan chan PeerUpdate, isMaster chan bool, peerMasterChan cha
 		if (companions[0] == localIP ){
 			masterID = localIP
 			isMaster <- true
+			asterIDChan <- masterID
 			peerMasterChan <- peerInfo
 		} 
 	}
 	if(masterID == ""){
 		go askPeersAboutMaster(peerChan, localIP, UDPoutChan)
+		select{
+		case masterID = <- masterIDChan:
+			fmt.Println("masteridchan" + masterID)
+			masterIDChan <- masterID
+		}
 	}
 	return masterID
 }
 
-func UDPUpkeep(peerChan chan PeerUpdate, peerMasterChan chan PeerUpdate, isMaster chan bool, localIP string, masterIDChan chan string, masterID string, UDPoutChan chan Message){
+func UDPUpkeep(	peerChan 	chan PeerUpdate,	peerMasterChan 	chan PeerUpdate, 
+				isMaster 	chan bool, 			masterIDChan 	chan string, 
+				UDPoutChan 	chan Message,		masterID 		string, 
+				localIP 	string){
 	for{
 		Upkeep:
 			select {
@@ -125,10 +141,9 @@ func transmitMessage(UDPoutChan chan Message, localIP string){
 		select{
 		case message := <- UDPoutChan:
 			fmt.Println("Transmitting")
-			message.SenderID = localIP 										//adding the localIP as senderID	
-			fmt.Println(message)												
+			message.SenderID = localIP 										//adding the localIP as senderID												
 			transmitChan <- message 										//transmitting the mssage
-			waitForEcho(transmitChan, echoChan, message)							//start new goroutine who waits for echo
+			waitForEcho(transmitChan, echoChan, message)					//start new goroutine who waits for echo
 		}
 	}
 }
@@ -143,19 +158,21 @@ func recieveMessage(UDPinChan chan Message, localIP string){
 		case  message := <- recieveChan:
 			fmt.Println("Recieved")
 			if(message.RecieverID == localIP){								//checking to see if the message was ment for you
-				echoChan <- message 										// putting out an echo on the echoport								
-				UDPinChan <- message 										//transmitting the message back to main and further
-
-			}
+				echoChan <- message 										//putting out an echo on the echoport
+				go func(){
+					UDPinChan <- message 									//transmitting the message back to main and further
+				}()
+			}		
 		}
 	}
 }
 
 func waitForEcho(transmitChan chan Message, echoChan chan Message, message Message){
+
 	ticker := time.NewTicker(time.Millisecond * 1000).C 					//waiting one second between resends
 	i := 0
 	for{
-		select{
+		select{								
 		case <- ticker:
 			fmt.Println("Echo")
 			transmitChan <- message 										//rebroadcasting if there is no reply
@@ -165,12 +182,10 @@ func waitForEcho(transmitChan chan Message, echoChan chan Message, message Messa
 				//HER MÅ OGSÅ MELDINGENE SENDES TILBAKE SÅ DE KAN BEHANDLS PÅ NYTT OG SENDES TIL NY RIKTIG PEER
 			}
 		case echo := <-echoChan:
-			fmt.Println("Reieved echo")
-			fmt.Println(echo)
-			if(reflect.DeepEqual(echo.Elevators, message.Elevators) && echo.MsgType == message.MsgType){ 
-				fmt.Println("Right echo!")											//checking to see if you recieved the right echo
-				return											
-			}														//when the right echo were recieved, stop the echo
+			if(reflect.DeepEqual(echo.Elevators, message.Elevators) && echo.MsgType == message.MsgType){ 	//checking to see if you recieved the right echo
+				fmt.Println("Right echo!")
+				return																//when the right echo were recieved, stop the echo
+			}
 		}
 	}
 }
