@@ -78,8 +78,14 @@ func IsTheElevatorFinished(slaves map[string]Elevator, senderIP string) (map[str
 					sender.Queue[i] = sender.Queue[i+1] 
 				}
 			}
-			sender.Light.ExtUpButtons[(sender.Position-1)] = 0
-			sender.Light.ExtDwnButtons[(sender.Position-2)] = 0
+			if (position == 1){
+				sender.Light.ExtUpButtons[(sender.Position-1)] = 0
+			} else if (position == 4){
+				sender.Light.ExtDwnButtons[(sender.Position-2)] = 0
+			} else{ 
+				sender.Light.ExtUpButtons[(sender.Position-1)] = 0
+				sender.Light.ExtDwnButtons[(sender.Position-2)] = 0
+			}
 			sender.Light.IntButtons[sender.Position-1] = 0
 		}
 	}
