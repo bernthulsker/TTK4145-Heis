@@ -15,23 +15,19 @@ import (
 
 func UDPInit(UDPoutChan chan Message, UDPinChan chan Message, peerChan chan PeerUpdate) (localIP string) {
 	fmt.Println("UDPinit")
-	internetConnection := make(chan bool)
-	go localLift.LocalMode(internetConnection)
-	for{
-		localIP, err := localip.LocalIP()
-		if err != nil {
-			continue
-		} else {
-			internetConnection <- true
-			sendStatus(localIP)
-			recieveStatus(peerChan)
 
-			go transmitMessage(UDPoutChan, localIP)
-			go recieveMessage(UDPinChan, localIP)
-		
-			return localIP
-		}
-		time.Sleep(time.Second)
+	localIP, err := localip.LocalIP()
+	if err != nil {
+		return ""
+	} 
+	internetConnection <- true
+	sendStatus(localIP)
+	recieveStatus(peerChan)
+
+	go transmitMessage(UDPoutChan, localIP)
+	go recieveMessage(UDPinChan, localIP)
+
+	return localIP
 	}	
 }
 
@@ -200,4 +196,25 @@ func sendStatus(localIP string){
 func recieveStatus(peerChan chan PeerUpdate){
 	//i need another line
 	go peers.Receiver(STATUSPORT, peerChan)
+}
+
+func CheckInternetConnection(internetConnection chan bool) {
+	localIP := " "
+	for{
+		newLocalIP := findIP()
+		if(newLocalIP != newLocalIP && newLocalIP != ""){
+			internetConnection <- false
+		}
+		if(newLocalIP != newLocalIP){
+			internetConnection <- true
+		}		
+	}
+}
+
+func findIP() (string){
+	localIP, err := localip.LocalIP()
+		if err != nil {
+			return ""
+		}
+	return localIP
 }

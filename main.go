@@ -9,16 +9,16 @@ import (
 	"fmt"
 )
 /*
-At ordre plasserers i kø og at ikke heisen bare hopper rett videre om det kommer ordre			<---- DETTE SKAL VÆRE GOOD. Måtte endre litt i eleven din Jon
-Lys																								<---- MULIG AT ORDREFIX ORDNET DETTE OGSÅ
-kjører forbi fjerde												<---- MÅ VEL SJEKKES PÅ LAB
-local mode
-andre etasje wut?												<---- MÅ VEL SJEKKES PÅ LAB
-processing pairs?
+At ordre plasserers i kø							<---- tight
+Lys													<---- tight
+kjører forbi fjerde									<---- tight
+local mode											<---- tight (nesten)
+andre etasje wut?									<---- tight
+processing pairs?									
 spre ordre ved master død
 genrelle feilmeldinger her og der
 
-concrurent map read write lol wut?					<----- SLITER MED Å FREMPROVOSERE DETTE IGJEN, GJØR DET VANSKELIG Å DEBUGGE
+concrurent map read write lol wut?					<----- dette kommer og går
 
 
 */
@@ -28,6 +28,16 @@ concrurent map read write lol wut?					<----- SLITER MED Å FREMPROVOSERE DETTE 
 
 
 func main(){
+	go stateMachine()
+
+	for{
+		fmt.Println("Im in the ending loop")
+		time.Sleep(time.Second*1)
+	}
+}
+
+
+func stateMachine(){
 	//Make channels
 	UDPoutChan 		:= make(chan Message)
 	UDPinChan 		:= make(chan Message)
@@ -38,23 +48,63 @@ func main(){
 	masterIDChan 	:= make(chan string)
 	elevOut 		:= make(chan Elevator)
 	elevIn 			:= make(chan Elevator)
+	internetConnect := make(chan bool)
 	masterID 		:= ""
-
-	localIP := udp.UDPInit(UDPoutChan, UDPinChan, peerChan)
-
-	go master.MasterLoop(isMaster, masterMessage, peerMasterChan, UDPoutChan)
-	go treatMessages(UDPinChan, UDPoutChan, masterMessage, masterIDChan, elevIn, elevOut, localIP)
-
-	masterID = udp.MasterInit(peerChan, isMaster, peerMasterChan, localIP, UDPoutChan, masterIDChan)
-
-	
-	go localLift.Elev_driver(elevIn, elevOut)
-	go udp.UDPUpkeep(peerChan, peerMasterChan, isMaster, masterIDChan, UDPoutChan, masterID, localIP)
-
+	localIP			:= ""
+	state 			:= "Initializing"
 	for{
-		fmt.Println("Im in the ending loop")
-		time.Sleep(time.Second*1)
+		StateMachine:
+		switch state {
+
+		case "Initializing":
+
+			localIP, state = udp.UDPInit(UDPoutChan, UDPinChan, peerChan)
+			if( localIP == ""){ 
+				state = "No internet"
+				break 
+			}
+
+			go master.MasterLoop(isMaster, masterMessage, peerMasterChan, UDPoutChan)
+			go treatMessages(UDPinChan, UDPoutChan, masterMessage, masterIDChan, elevIn, elevOut, localIP)
+			masterID = udp.MasterInit(peerChan, isMaster, peerMasterChan, localIP, UDPoutChan, masterIDChan)
+			go localLift.Elev_driver(elevIn, elevOut)
+			go udp.UDPUpkeep(peerChan, peerMasterChan, isMaster, masterIDChan, UDPoutChan, masterID, localIP)
+
+			state = "Normal operation"
+
+		case "Normal operation":
+
+			go udp.CheckInternetConnection(internetConnect)
+			for{
+				select{
+				case internet := <- internetConnect:
+					if(!internet){
+						state = "No internet"
+						break StateMachine
+					}
+				}		
+			}
+
+		case "No internet":
+
+			internetConnection := make(chan bool)
+			go localLift.LocalMode(internetConnection)
+			for{
+				select{
+				case internet := <- internetConnect:
+					if(internet){
+						state = "Initializing"
+						internetConnection <- true
+						break StateMachine
+					}
+				}		
+			}
+
+		}
+
 	}
+
+
 }
 
 
