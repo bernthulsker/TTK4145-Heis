@@ -2,7 +2,7 @@ package main
 
 import (
 	. "./definitions"
-	"./localLift"
+	//"./localLift"
 	"./udp"
 	"./master"
 	"time"
@@ -12,7 +12,7 @@ import (
 At ordre plasserers i kø							<---- tight
 Lys													<---- tight
 kjører forbi fjerde									<---- tight
-local mode											<---- tight (nesten)
+local mode											<---- tight (Kanskej nå? MÅ teste på datamaskin!)
 andre etasje wut?									<---- tight
 processing pairs?									
 spre ordre ved master død
@@ -52,6 +52,8 @@ func stateMachine(){
 	masterID 		:= ""
 	localIP			:= ""
 	state 			:= "Initializing"
+	currentState 	:= Elevator{}
+
 	for{
 		StateMachine:
 		switch state {
@@ -67,6 +69,7 @@ func stateMachine(){
 			go master.MasterLoop(isMaster, masterMessage, peerMasterChan, UDPoutChan)
 			go treatMessages(UDPinChan, UDPoutChan, masterMessage, masterIDChan, elevIn, elevOut, localIP)
 			masterID = udp.MasterInit(peerChan, isMaster, peerMasterChan, localIP, UDPoutChan, masterIDChan)
+			elevOut <- currentState
 			go localLift.Elev_driver(elevIn, elevOut)
 			go udp.UDPUpkeep(peerChan, peerMasterChan, isMaster, masterIDChan, UDPoutChan, masterID, localIP)
 
@@ -74,6 +77,8 @@ func stateMachine(){
 
 		case "Normal operation":
 
+			messageBackup := Message{}
+			messageBackup.Elevators = make(map[string]Elevator)
 			go udp.CheckInternetConnection(internetConnect)
 			for{
 				select{
@@ -82,29 +87,32 @@ func stateMachine(){
 						state = "No internet"
 						break StateMachine
 					}
-				}		
+				}
 			}
 
 		case "No internet":
 
 			internetConnection := make(chan bool)
-			go localLift.LocalMode(internetConnection)
+			currentStateChan := make(chan elevator)
+			currentState.Order = currentState.Light 
+
+			go localLift.LocalMode(internetConnection, currentStateChan, currentState)
 			for{
 				select{
 				case internet := <- internetConnect:
 					if(internet){
 						state = "Initializing"
 						internetConnection <- true
-						break StateMachine
+						select{
+						case currentState := <- currentStateChan:
+							currentState.Order = currentState.Light 
+							break StateMachine
+						}
 					}
 				}		
 			}
-
 		}
-
 	}
-
-
 }
 
 
@@ -149,19 +157,6 @@ func treatMessages(	UDPinChan 		chan Message, 	UDPoutChan 		chan Message,
 
 
 
-/*func sendElevator(elevOut chan Elevator){
-	ones := 	[4]int{1, 1, 1, 1}
-	order := 	Buttons{ones, ones, ones}
-	light := 	Buttons{}
-	queue := 	[4]int{3,2,0,0}
-	elevator :=	Elevator{1,0,1,light,order,queue}
-	for{
-		elevOut <- elevator                               	
-		fmt.Println("I am in the ending loop")
-		time.Sleep(time.Millisecond*10)
-	}
-}
-*/
 
 
 
@@ -196,7 +191,22 @@ func treatMessages(	UDPinChan 		chan Message, 	UDPoutChan 		chan Message,
 
 //Clutter
 
-	/*go func (){
+
+	/*
+
+	func sendElevator(elevOut chan Elevator){
+	ones := 	[4]int{1, 1, 1, 1}
+	order := 	Buttons{ones, ones, ones}
+	light := 	Buttons{}
+	queue := 	[4]int{3,2,0,0}
+	elevator :=	Elevator{1,0,1,light,order,queue}
+	for{
+		elevOut <- elevator                               	
+		fmt.Println("I am in the ending loop")
+		time.Sleep(time.Millisecond*10)
+	}
+}
+	go func (){
 		msg := Message{}
 		msg.MsgType = 0
 		for{

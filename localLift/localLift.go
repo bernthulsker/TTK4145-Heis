@@ -9,14 +9,18 @@ import (
 )
 
 
-func LocalMode(internetConnection chan bool) {
+func LocalMode(internetConnection chan bool, currentStateChan chan Elevator, currentState Elevator) {
 	elevOut 	:= make(chan Elevator)
 	elevIn 		:= make(chan Elevator)
 	elevators 	:= make(map[string]Elevator)
 	localIP  	:= "1"
 	change1 	:= false
 	change2		:= false
+
+	
 	go Elev_driver( elevIn, elevOut)
+	elevators[localIP] = currentState
+	elevOut <- currentState
 	for{
 		select{
 		case elevator := <- elevOut:
@@ -31,6 +35,7 @@ func LocalMode(internetConnection chan bool) {
 				change1, change2 = false, false
 			}
 		case <- internetConnection:
+			currentStateChan <- elevators[localIP] 
 			return
 		}
 	}
