@@ -3,7 +3,7 @@ package master
 import (
 	."../definitions"
 	."fmt"
-	"strconv"
+	//"strconv"
 )
 
 
@@ -31,8 +31,8 @@ func MasterLoop(isMaster 	chan bool, 			masterMessage 	chan Message,
 					change1 := false
 					change2 := false
 					if (messageBackup.MsgType == 1){
-						messageBackup.Elevators, change1 = isTheElevatorFinished(messageBackup.Elevators, senderID)
-						messageBackup.Elevators, change2 = calculateOptimalElevator(messageBackup.Elevators, senderID)
+						messageBackup.Elevators, change1 = IsTheElevatorFinished(messageBackup.Elevators, senderID)
+						messageBackup.Elevators, change2 = CalculateOptimalElevator(messageBackup.Elevators, senderID)
 						Println(change1)
 						Println(change2)
 						if (change1 || change2) {
@@ -54,7 +54,7 @@ func MasterLoop(isMaster 	chan bool, 			masterMessage 	chan Message,
 	}
 }
 
-func isTheElevatorFinished(slaves map[string]Elevator, senderIP string) (map[string]Elevator, bool){
+func IsTheElevatorFinished(slaves map[string]Elevator, senderIP string) (map[string]Elevator, bool){
 	slavePointer := make(map[string]*Elevator)
 	var slavetemp [ELEVATORS]Elevator
 	change := false
@@ -93,7 +93,7 @@ func isTheElevatorFinished(slaves map[string]Elevator, senderIP string) (map[str
 }
 
 func CalculateOptimalElevator(slaves map[string]Elevator, senderIP string) (map[string]Elevator, bool){
-	Println("Calculating optimal elevator")
+	//Println("Calculating optimal elevator")
 	leastCostID := ""
 	firstZero := 0
 	slavePointer := make(map[string]*Elevator)
@@ -132,13 +132,13 @@ func CalculateOptimalElevator(slaves map[string]Elevator, senderIP string) (map[
 			continue
 		} else{
 			change = true
-			leastCostID, firstZero = calculateOptimalElevatorAssignment(slavePointer, i+1)
+			leastCostID, firstZero = calculateOptimalElevatorAssignment(slavePointer, i+2)
 			optimalSlave := *(slavePointer[leastCostID])
 			optimalSlave.Light.ExtDwnButtons[i] = 1
 			if(firstZero == -1){
 				continue
 			} else{
-				optimalSlave.Queue[firstZero] = i+1
+				optimalSlave.Queue[firstZero] = i+2
 			}
 		}
 	}

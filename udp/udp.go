@@ -5,16 +5,18 @@ import (
 	"./localip"
 	"./bcast"
 	"./peers"
+	"../localLift"
 	"time"
 	"fmt"
 	"reflect"
+
 )
 
 
 func UDPInit(UDPoutChan chan Message, UDPinChan chan Message, peerChan chan PeerUpdate) (localIP string) {
 	fmt.Println("UDPinit")
 	internetConnection := make(chan bool)
-	go LocalMode(internetConnection)
+	go localLift.LocalMode(internetConnection)
 	for{
 		localIP, err := localip.LocalIP()
 		if err != nil {
@@ -43,7 +45,7 @@ func MasterInit(peerChan 		chan PeerUpdate, 	isMaster chan bool,
 		if (companions[0] == localIP ){
 			masterID = localIP
 			isMaster <- true
-			asterIDChan <- masterID
+			masterIDChan <- masterID
 			peerMasterChan <- peerInfo
 		} 
 	}

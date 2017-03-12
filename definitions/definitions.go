@@ -10,8 +10,8 @@ const STATUSPORT 	int = 20202
 
 type Buttons struct {
 	IntButtons    	[FLOORS]int
-	ExtUpButtons  	[FLOORS]int
-	ExtDwnButtons 	[FLOORS]int 		
+	ExtUpButtons  	[FLOORS-1]int
+	ExtDwnButtons 	[FLOORS-1]int 		
 }
 
 type Elevator struct {

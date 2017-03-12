@@ -2,7 +2,7 @@ package main
 
 import (
 	. "./definitions"
-	"./driver"
+	"./localLift"
 	"./udp"
 	"./master"
 	"time"
@@ -48,8 +48,8 @@ func main(){
 	masterID = udp.MasterInit(peerChan, isMaster, peerMasterChan, localIP, UDPoutChan, masterIDChan)
 
 	
-	//go driver.Elev_driver(elevIn, elevOut)
-	go udp.UDPUpkeep(peerChan, peerMasterChan, isMaster, localIP, masterIDChan, masterID, UDPoutChan)
+	go localLift.Elev_driver(elevIn, elevOut)
+	go udp.UDPUpkeep(peerChan, peerMasterChan, isMaster, masterIDChan, UDPoutChan, masterID, localIP)
 
 	for{
 		fmt.Println("Im in the ending loop")
@@ -95,31 +95,11 @@ func treatMessages(	UDPinChan 		chan Message, 	UDPoutChan 		chan Message,
 	}
 }
 
-func LocalMode(internetConnection chan bool) (string){
-	elevOut 	:= make(chan Elevator)
-	elevIn 		:= make(chan Elevator)
-	elevators 	:= make(map[string]Elevator)
-	localIP  	:= ""
-	change 		:= false
-	go driver.Elev_driver(elevOut, elevIn)
-	for{
-		select{
-		case elevator := <- elevOut:
-			elevators[localIP] = elevator
-			elevators[localIP], change = master.CalculateOptimalElevator(elevators, localIP)
-			if(change){
-				elevIn <- elevators[localIP]
-				change = false
-			}
-		}
-		case <- internetConnection:
-			return
-	}
-}
 
 
 
-func sendElevator(elevOut chan Elevator){
+
+/*func sendElevator(elevOut chan Elevator){
 	ones := 	[4]int{1, 1, 1, 1}
 	order := 	Buttons{ones, ones, ones}
 	light := 	Buttons{}
@@ -131,7 +111,7 @@ func sendElevator(elevOut chan Elevator){
 		time.Sleep(time.Millisecond*10)
 	}
 }
-
+*/
 
 
 
