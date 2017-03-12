@@ -20,7 +20,7 @@ func LocalMode(internetConnection chan bool, currentStateChan chan Elevator, cur
 	
 	go Elev_driver( elevIn, elevOut)
 	elevators[localIP] = currentState
-	elevOut <- currentState
+	elevIn <- currentState
 	for{
 		select{
 		case elevator := <- elevOut:

@@ -5,7 +5,6 @@ import (
 	"./localip"
 	"./bcast"
 	"./peers"
-	"../localLift"
 	"time"
 	"fmt"
 	"reflect"
@@ -20,7 +19,6 @@ func UDPInit(UDPoutChan chan Message, UDPinChan chan Message, peerChan chan Peer
 	if err != nil {
 		return ""
 	} 
-	internetConnection <- true
 	sendStatus(localIP)
 	recieveStatus(peerChan)
 
@@ -29,7 +27,6 @@ func UDPInit(UDPoutChan chan Message, UDPinChan chan Message, peerChan chan Peer
 
 	return localIP
 	}	
-}
 
 func MasterInit(peerChan 		chan PeerUpdate, 	isMaster chan bool, 
 				peerMasterChan 	chan PeerUpdate, 	localIP string, 
@@ -120,13 +117,11 @@ func askPeersAboutMaster(peerChan chan PeerUpdate, localIP string, UDPoutChan ch
 }
 
 func askAboutMaster(companion string, localIP string, UDPoutChan chan Message) {
-	fmt.Println("I am asking if "  + companion + " is a master")
 	msg := Message{}
 	msg.MsgType = 3
 	msg.SenderID = localIP
 	msg.RecieverID = companion
 	UDPoutChan <- msg
-	fmt.Println("I am finished asking")
 	return
 }
 
@@ -138,7 +133,6 @@ func transmitMessage(UDPoutChan chan Message, localIP string){
 	for{
 		select{
 		case message := <- UDPoutChan:
-			fmt.Println("Transmitting")
 			message.SenderID = localIP 										//adding the localIP as senderID												
 			transmitChan <- message 										//transmitting the mssage
 			waitForEcho(transmitChan, echoChan, message)					//start new goroutine who waits for echo
@@ -154,7 +148,6 @@ func recieveMessage(UDPinChan chan Message, localIP string){
 	for{
 		select{
 		case  message := <- recieveChan:
-			fmt.Println("Recieved")
 			if(message.RecieverID == localIP){								//checking to see if the message was ment for you
 				echoChan <- message 										//putting out an echo on the echoport
 				go func(){
@@ -172,7 +165,6 @@ func waitForEcho(transmitChan chan Message, echoChan chan Message, message Messa
 	for{
 		select{								
 		case <- ticker:
-			fmt.Println("Echo")
 			transmitChan <- message 										//rebroadcasting if there is no reply
 			i+=1
 			if(i > 5){
@@ -181,7 +173,6 @@ func waitForEcho(transmitChan chan Message, echoChan chan Message, message Messa
 			}
 		case echo := <-echoChan:
 			if(reflect.DeepEqual(echo.Elevators, message.Elevators) && echo.MsgType == message.MsgType){ 	//checking to see if you recieved the right echo
-				fmt.Println("Right echo!")
 				return																//when the right echo were recieved, stop the echo
 			}
 		}
@@ -201,20 +192,19 @@ func recieveStatus(peerChan chan PeerUpdate){
 func CheckInternetConnection(internetConnection chan bool) {
 	localIP := " "
 	for{
-		newLocalIP := findIP()
-		if(newLocalIP != newLocalIP && newLocalIP != ""){
+		newLocalIP,_ := localip.LocalIP()
+		fmt.Println(newLocalIP)
+		fmt.Println("lol")
+		if(newLocalIP != localIP && newLocalIP == ""){
 			internetConnection <- false
+			fmt.Println("Lost connection")
+			localIP = newLocalIP
 		}
-		if(newLocalIP != newLocalIP){
+		if(newLocalIP != localIP){
 			internetConnection <- true
-		}		
-	}
-}
-
-func findIP() (string){
-	localIP, err := localip.LocalIP()
-		if err != nil {
-			return ""
+			fmt.Println("Gained connection")
+			localIP = newLocalIP
 		}
-	return localIP
+		time.Sleep(time.Second)		
+	}
 }

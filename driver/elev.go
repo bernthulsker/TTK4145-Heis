@@ -85,6 +85,7 @@ func elev_stop_at_floor(done chan bool) {
 	time.Sleep(time.Second * 3)
 	Io_clear_bit(LIGHT_DOOR_OPEN)
 	done <- true 
+	return
 }
 
 func elev_set_floor_light(floor int) {

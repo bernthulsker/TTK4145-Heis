@@ -2,10 +2,10 @@ package main
 
 import (
 	. "./definitions"
-	//"./localLift"
+	"./localLift"
 	"./udp"
 	"./master"
-	"time"
+	//"time"
 	"fmt"
 )
 /*
@@ -30,10 +30,7 @@ concrurent map read write lol wut?					<----- dette kommer og går
 func main(){
 	go stateMachine()
 
-	for{
-		fmt.Println("Im in the ending loop")
-		time.Sleep(time.Second*1)
-	}
+	select{}
 }
 
 
@@ -53,6 +50,8 @@ func stateMachine(){
 	localIP			:= ""
 	state 			:= "Initializing"
 	currentState 	:= Elevator{}
+	initialized 	:= false
+	go udp.CheckInternetConnection(internetConnect)
 
 	for{
 		StateMachine:
@@ -60,7 +59,7 @@ func stateMachine(){
 
 		case "Initializing":
 
-			localIP, state = udp.UDPInit(UDPoutChan, UDPinChan, peerChan)
+			localIP = udp.UDPInit(UDPoutChan, UDPinChan, peerChan)
 			if( localIP == ""){ 
 				state = "No internet"
 				break 
@@ -69,22 +68,24 @@ func stateMachine(){
 			go master.MasterLoop(isMaster, masterMessage, peerMasterChan, UDPoutChan)
 			go treatMessages(UDPinChan, UDPoutChan, masterMessage, masterIDChan, elevIn, elevOut, localIP)
 			masterID = udp.MasterInit(peerChan, isMaster, peerMasterChan, localIP, UDPoutChan, masterIDChan)
-			elevOut <- currentState
+			
 			go localLift.Elev_driver(elevIn, elevOut)
 			go udp.UDPUpkeep(peerChan, peerMasterChan, isMaster, masterIDChan, UDPoutChan, masterID, localIP)
+
+			initialized = true
 
 			state = "Normal operation"
 
 		case "Normal operation":
-
+			elevOut <- currentState
 			messageBackup := Message{}
 			messageBackup.Elevators = make(map[string]Elevator)
-			go udp.CheckInternetConnection(internetConnect)
 			for{
 				select{
 				case internet := <- internetConnect:
 					if(!internet){
 						state = "No internet"
+						fmt.Println(state)
 						break StateMachine
 					}
 				}
@@ -93,7 +94,7 @@ func stateMachine(){
 		case "No internet":
 
 			internetConnection := make(chan bool)
-			currentStateChan := make(chan elevator)
+			currentStateChan := make(chan Elevator)
 			currentState.Order = currentState.Light 
 
 			go localLift.LocalMode(internetConnection, currentStateChan, currentState)
@@ -101,7 +102,8 @@ func stateMachine(){
 				select{
 				case internet := <- internetConnect:
 					if(internet){
-						state = "Initializing"
+						if(initialized) {state = "Normal operation"
+						} else{ state = "Initializing" }
 						internetConnection <- true
 						select{
 						case currentState := <- currentStateChan:
