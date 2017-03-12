@@ -35,15 +35,19 @@ func elev_go(dir int) { //Dir =1, elevator goes up. Dir = 0, elevator stops, Dir
 
 
 func elev_go_to_floor(target chan int) { //Returns if the requested floor is out of range. Stops the elevator if something is written to kill
-	floor := make(chan int)
+	floor 		:= make(chan int)
+
 	go elev_poll_floor_sensor(floor)
-	current_target 	:= 	<- floor
+
+	current_target  := 0.5
+	current_target 	 = 	float64(<- floor)
 	current_floor 	:= current_target
 	has_stopped		:= true
+	between_floors  := true
 	for{
 		select{
-		case current_target = <- target:
-			
+		case inncomming_target := <- target:
+			current_target = float64(inncomming_target)
 			if current_target == current_floor {
 				elev_go(0)
 				elev_stop_at_floor()
@@ -56,11 +60,25 @@ func elev_go_to_floor(target chan int) { //Returns if the requested floor is out
 				elev_go(-1)
 				has_stopped = false
 			}
-		case current_floor = <- floor:
-				if current_target == current_floor {
-				elev_go(0)
+		case sensed_floor := <- floor:
+			if sensed_floor == 0 && !between_floors{
+				between_floors = true
+				dir := Io_read_bit(MOTORDIR)
+				if dir == 1{
+					current_floor = current_floor - 0.5
+				}else{
+					current_floor = current_floor + 0.5
+				}
+			}
+			if sensed_floor != 0{
+				current_floor = float64(sensed_floor)
+				between_floors = false
+			}
+
+			if current_target == current_floor {
+			elev_go(0)
 				if (!has_stopped){
-					has_stopped = true
+					has_stopped = true // Lag noe som sjekker om den er over eller under flooren den detekterer.
 					elev_stop_at_floor()
 				}
 			}
@@ -69,7 +87,6 @@ func elev_go_to_floor(target chan int) { //Returns if the requested floor is out
 }
 
 func elev_stop_at_floor() { 
-	fmt.Println("stopping")
 	Io_set_bit(LIGHT_DOOR_OPEN)
 	time.Sleep(time.Second * 3)
 	Io_clear_bit(LIGHT_DOOR_OPEN)
@@ -164,7 +181,7 @@ func elev_light_controller(orders chan Buttons) {
 			Io_write_bit(LIGHT_COMMAND4, lights.IntButtons[3])
 
 			Io_write_bit(LIGHT_UP1, lights.ExtUpButtons[0])
-			Io_write_bit(LIGHT_UP2, lights.ExtUpButtons[1])
+			Io_write_bit(LIGHT_UP2, lights.ExtUpButatons[1])
 			Io_write_bit(LIGHT_UP3, lights.ExtUpButtons[2])
 
 			Io_write_bit(LIGHT_DOWN2, lights.ExtDwnButtons[1])
@@ -243,7 +260,6 @@ func Elev_driver(incm_elev_update chan Elevator, out_elev_update chan Elevator) 
 	for {
 		select {
 		case local_lift := <-incm_elev_update:
-			fmt.Println("Recieving inncomming transmission")
 			target <- local_lift.Queue[0]
 			lights <- local_lift.Light
 			status <- local_lift
@@ -257,21 +273,26 @@ func Elev_test() {
 	into_elev := make(chan Elevator)
 	outof_elev := make(chan Elevator)
 
-	go Elev_driver(into_elev, outof_elev)
 
+	go Elev_driver(into_elev, outof_elev)
+	
+	
 	for{
 		select{
 		case dummy_elev:= <- outof_elev:
 			dummy_elev2 := Elevator{}
 
-			for i,j := range dummy_elev.Order.IntOrders{
+			for i,j := range dummy_elev.Order.IntButtons{
 				if j == 1{
 					dummy_elev2.Queue[0] = i+1
+					dummy_elev2.Light.IntButtons[i] = 1
 					break
 				}
 			}
 			if (dummy_elev2.Queue[0] != 0){
-				into_elev <- dummy_elev2	
+				go func (){
+					into_elev <- dummy_elev2
+				}()	
 			}
 
 			}
@@ -284,7 +305,7 @@ func pause() {
 	t := time.Now()
 	h, m, s := t.Clock()
 	for {
-		fmt.Println("Vi kommer snart tilbake. Vært borte siden:", h, m, s)
+		fmt.Println("Jeg kommer snart tilbake. Vært borte siden:", h, m, s)
 		sin := time.Since(t)
 		fmt.Println("Som er så lenge siden:", sin)
 		time.Sleep(time.Second * 1)
