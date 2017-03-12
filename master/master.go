@@ -141,12 +141,12 @@ func CalculateOptimalElevator(slaves map[string]Elevator, senderIP string) (map[
 		} else{
 			change = true
 			leastCostID, firstZero = calculateOptimalElevatorAssignment(slavePointer, i+2)
-			optimalSlave := *(slavePointer[leastCostID])
-			optimalSlave.Light.ExtDwnButtons[i] = 1
+			optimalSlave := slavePointer[leastCostID]
+			(*optimalSlave).Light.ExtDwnButtons[i] = 1
 			if(firstZero == -1){
 				continue
 			} else{
-				optimalSlave.Queue[firstZero] = i+2
+				(*optimalSlave).Queue[firstZero] = i+2
 			}
 		}
 	}
