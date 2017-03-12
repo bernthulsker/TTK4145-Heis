@@ -2,7 +2,6 @@ package main
 
 import (
 	. "../driver"
-	. "../udp"
 )
 
 func main() {
