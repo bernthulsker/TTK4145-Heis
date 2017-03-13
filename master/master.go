@@ -42,6 +42,7 @@ func MasterLoop(isMaster 	chan bool, 			masterMessage 	chan Message,
 						}
 					}
 				case slaves = <- peerChan:
+					UDPoutChan <- messageBackup
 				}
 			}
 		}
