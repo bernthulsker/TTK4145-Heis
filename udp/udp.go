@@ -32,19 +32,18 @@ func MasterInit(peerChan 		chan PeerUpdate, 	isMaster chan bool,
 				peerMasterChan 	chan PeerUpdate, 	localIP string, 
 				UDPoutChan 		chan Message, 		masterIDChan chan string) (masterID string){
 	fmt.Println("masterInit")
-	timer := NewTimer(time.Millisecond*500).C
+	timer := time.NewTimer(time.Millisecond*500).C
 	peerInfo := PeerUpdate{}
 	For:
 	for{
 		select{
 		case peerInfo = <- peerChan:
-		case <- ticker:
+		case <- timer:
 			break For
-			}
 		}
 	}
 	go askPeersAboutMaster(peerInfo, localIP, UDPoutChan)
-	timer := NewTimer(time.Second*3)
+	timer = time.NewTimer(time.Second*3).C
 	select{
 	case masterID = <- masterIDChan:
 		masterIDChan <- masterID
@@ -108,8 +107,8 @@ func UDPUpkeep(	peerChan 	chan PeerUpdate,	peerMasterChan 	chan PeerUpdate,
 	}
 }
 
-func askPeersAboutMaster(peerChan PeerUpdate, localIP string, UDPoutChan chan Message){
-	for _, companion := range companions{
+func askPeersAboutMaster(peerInfo PeerUpdate, localIP string, UDPoutChan chan Message){
+	for _, companion := range peerInfo.Peers{
 		askAboutMaster(companion, localIP, UDPoutChan)
 	}
 }
