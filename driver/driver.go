@@ -6,8 +6,6 @@ package driver  // where "driver" is the folder that contains io.c, io.h, channe
 #include "elev.h"
 */
 import "C"
-import "fmt"
-import "strconv"
 
 
 type Elev_button_type_t int
@@ -29,7 +27,7 @@ const (
 
 
 func Init() {
-	C.elev_init()
+	C.elev_init(1)
 }
 
 func Direction(dir Elev_motor_direction_t) {
@@ -37,7 +35,7 @@ func Direction(dir Elev_motor_direction_t) {
 }
 
 func Get_floor_sensor() int {
-	return int(C.elev_get_floor_sensor_signal())
+	return int(C.elev_get_floor_sensor_signal())+1
 }
 
 func Get_button_signal(button Elev_button_type_t, floor int) int {
@@ -53,7 +51,6 @@ func Get_obstruction() int {
 }
 
 func Set_floor_indicator(floor int) {
-	fmt.Println(strconv.Itoa(floor))
 	C.elev_set_floor_indicator(C.int(floor))
 }
 

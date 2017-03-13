@@ -30,7 +30,6 @@ func LocalMode(	internetConnection chan bool, currentStateChan chan Elevator,
 			currentState = elevators[localIP]
 			if(change1 || change2){
 				go func(){
-					fmt.Println(elevators)
 					elevIn <- currentState
 					}()
 				change1, change2 = false, false
@@ -40,6 +39,19 @@ func LocalMode(	internetConnection chan bool, currentStateChan chan Elevator,
 			return
 		}
 	}
+}
+
+
+func Elev_test(){
+	//---Create channels------------------------------
+	target 		:= make(chan int)
+	lights 		:= make(chan Buttons)
+	statusIn 	:= make(chan Elevator)
+	statusOut 	:= make(chan Elevator)
+
+
+	//---Init of driver-------------------------------
+	elev_init(target,lights,statusIn,statusOut)
 }
 
 func Elev_driver(incm_elev_update chan Elevator, out_elev_update chan Elevator) int {
@@ -63,9 +75,12 @@ func Elev_driver(incm_elev_update chan Elevator, out_elev_update chan Elevator) 
 	for {
 		select {
 		case local_lift := <-incm_elev_update:
-			target <- local_lift.Queue[0]
-			lights <- local_lift.Light
-			statusIn <- local_lift 									
+			if(local_lift.Queue[0] < 5 && local_lift.Queue[0] >= 0){
+				target <- local_lift.Queue[0]
+				lights <- local_lift.Light
+				statusIn <- local_lift 	
+			}
+
 		}
 	}
 }
@@ -138,7 +153,7 @@ func elev_go_to_floor(target chan int, directionChan chan Elev_motor_direction_t
 			fmt.Println("does")
 			stopping = false
 		}
-		if !stopping && !(current_target <1 || current_target > FLOORS) {
+		if !stopping && (current_target >0 && current_target <= FLOORS) {
 			fmt.Println("it")
 			dir := elev_calculate_dir(current_target,current_floor)
 			elev_go(dir)
