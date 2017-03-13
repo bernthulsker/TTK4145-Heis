@@ -36,6 +36,7 @@ func MasterInit(peerChan 		chan PeerUpdate, 	isMaster chan bool,
 	case peerInfo := <- peerChan:
 		companions := peerInfo.Peers
 		if (companions[0] == localIP ){
+			fmt.Println("This check is shit")
 			masterID = localIP
 			isMaster <- true
 			masterIDChan <- masterID

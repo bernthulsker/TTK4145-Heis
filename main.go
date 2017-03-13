@@ -161,6 +161,8 @@ func treatMessages(	UDPinChan 			chan Message, 	UDPoutChan 		chan Message,
 				masterMessage <- messageBackup
 			} else if (messageBackup.MsgType == 2){
 				elevIn <- messageBackup.Elevators[localIP]
+				fmt.Println(localIP + " got a queue")
+				fmt.Println(messageBackup.Elevators[localIP])
 				currentElevState <- messageBackup.Elevators[localIP]
 			} else if (messageBackup.MsgType == 3){
 				fmt.Println("Someone asked if " + localIP + " is master")
@@ -174,11 +176,7 @@ func treatMessages(	UDPinChan 			chan Message, 	UDPoutChan 		chan Message,
 			fmt.Println("I got a masterID")
 
 		case elev_status := <- elevOut:
-			fmt.Println(elev_status)
-			fmt.Println(localIP)
-			fmt.Println(messageBackup)
 			messageBackup.Elevators[localIP] = elev_status
-			fmt.Println("lol")
 			messageBackup.MsgType = 1
 			messageBackup.RecieverID = masterID
 			UDPoutChan <- messageBackup

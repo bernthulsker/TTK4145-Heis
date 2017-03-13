@@ -41,19 +41,6 @@ func LocalMode(	internetConnection chan bool, currentStateChan chan Elevator,
 	}
 }
 
-
-func Elev_test(){
-	//---Create channels------------------------------
-	target 		:= make(chan int)
-	lights 		:= make(chan Buttons)
-	statusIn 	:= make(chan Elevator)
-	statusOut 	:= make(chan Elevator)
-
-
-	//---Init of driver-------------------------------
-	elev_init(target,lights,statusIn,statusOut)
-}
-
 func Elev_driver(incm_elev_update chan Elevator, out_elev_update chan Elevator) int {
 	//---Create channels------------------------------
 	target 		:= make(chan int)
@@ -75,12 +62,13 @@ func Elev_driver(incm_elev_update chan Elevator, out_elev_update chan Elevator) 
 	for {
 		select {
 		case local_lift := <-incm_elev_update:
-			if(local_lift.Queue[0] < 5 && local_lift.Queue[0] >= 0){
-				target <- local_lift.Queue[0]
-				lights <- local_lift.Light
-				statusIn <- local_lift 	
+			lights <- local_lift.Light
+			statusIn <- local_lift 
+			if(local_lift.Queue[0] <= FLOORS && local_lift.Queue[0] > 0){
+				target <- local_lift.Queue[0]	
+			} else{
+				fmt.Println("Rubbish in elevdriver")
 			}
-
 		}
 	}
 }
@@ -140,27 +128,28 @@ func elev_go_to_floor(target chan int, directionChan chan Elev_motor_direction_t
 	for{
 		select{
 		case current_target = <- target:
+			if (!stopping){
+					dir := elev_calculate_dir(current_target,current_floor)
+					elev_go(dir)
+					if(dir != last_dir){
+						last_dir = dir
+						directionChan <- dir
+					}
+				}
 		case position:= <- floor:
 			if(position == 0){ 
 				continue 
 			} else{
 				current_floor = position
 			}
+			if(current_target == current_floor){
+				stopping = true
+				elev_go(DIRN_STOP)
+				directionChan <- DIRN_STOP
+				go elev_stop_at_floor(done_stopping)
+			}
 		case <- done_stopping:
 			stopping = false
-		}
-		if !stopping && (current_target >0 && current_target <= FLOORS) {
-			dir := elev_calculate_dir(current_target,current_floor)
-			elev_go(dir)
-			if(dir != last_dir){
-				last_dir = dir
-				directionChan <- dir
-			}
-		}
-		if (!stopping && current_target == current_floor) || (current_target < 1 || current_target > FLOORS){
-			stopping = true
-			directionChan <- DIRN_STOP
-			go elev_stop_at_floor(done_stopping)
 		}
 	}
 }
@@ -282,7 +271,3 @@ func elev_status_checker(statusIn chan Elevator, statusOut chan Elevator, direct
 		}
 	}
 }
-
-
-
-
