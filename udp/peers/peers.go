@@ -12,7 +12,7 @@ import (
 
 
 const interval = 15 * time.Millisecond
-const timeout = 50 * time.Millisecond
+const timeout = 500 * time.Millisecond
 
 func Transmitter(port int, id string, transmitEnable <-chan bool) {
 

@@ -173,7 +173,7 @@ func treatMessages(	UDPinChan 			chan Message, 	UDPoutChan 		chan Message,
 				masterID = messageBackup.SenderID
 			}
 		case masterID = <- masterIDChan:
-			fmt.Println("I got a masterID")
+			fmt.Println("I got a masterID" + masterID)
 
 		case elev_status := <- elevOut:
 			messageBackup.Elevators[localIP] = elev_status
