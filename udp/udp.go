@@ -114,11 +114,9 @@ func askPeersAboutMaster(peerChan chan PeerUpdate, localIP string, UDPoutChan ch
 }
 
 func askAboutMaster(companion string, localIP string, UDPoutChan chan Message) {
-	msg := Message{}
-	msg.MsgType = 3
-	msg.SenderID = localIP
-	msg.RecieverID = companion
-	UDPoutChan <- msg
+	Elevators 	:= make(map[string]Elevator)
+	msg 		:= Message{Elevators, localIP, companion, 3}
+	UDPoutChan	<- msg
 	return
 }
 

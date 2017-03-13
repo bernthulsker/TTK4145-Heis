@@ -178,6 +178,7 @@ func treatMessages(	UDPinChan 			chan Message, 	UDPoutChan 		chan Message,
 			fmt.Println(localIP)
 			fmt.Println(messageBackup)
 			messageBackup.Elevators[localIP] = elev_status
+			fmt.Println("lol")
 			messageBackup.MsgType = 1
 			messageBackup.RecieverID = masterID
 			UDPoutChan <- messageBackup
