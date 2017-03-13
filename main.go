@@ -59,7 +59,7 @@ func stateMachine(){
 
 	for{
 		StateMachine:
-		switch state {
+		switch state {	
 
 		case "Initialize elev":
 
@@ -144,8 +144,8 @@ func treatMessages(	UDPinChan 			chan Message, 	UDPoutChan 		chan Message,
 					localIP 		string){
 
 	fmt.Println("Treat Messages")
-	messageBackup 			:= Message{}
-	messageBackup.Elevators  = make(map[string]Elevator)
+	Elevators 				:= make(map[string]Elevator)
+	messageBackup 			:= Message{Elevators, "", "", 0}
 	masterID 				:= ""
 	state 					:= ""
 	for{
