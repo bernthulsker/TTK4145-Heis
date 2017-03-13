@@ -7,7 +7,7 @@ import (
 	"./peers"
 	"time"
 	"fmt"
-	"reflect"
+	//"reflect"
 	//"math/rand"
 )
 
@@ -130,30 +130,30 @@ func askAboutMaster(companion string, localIP string, UDPoutChan chan Message) {
 
 func transmitMessage(UDPoutChan chan Message, localIP string){
 	transmitChan := make(chan Message)
-	echoChan := make(chan Message)
+	//echoChan := make(chan Message)
 	go bcast.Transmitter(MESSAGEPORT, transmitChan)
-	go bcast.Receiver(ECHOPORT, echoChan)
+	//go bcast.Receiver(ECHOPORT, echoChan)
 	for{
 		select{
 		case message := <- UDPoutChan:
 			message.SenderID = localIP 										//adding the localIP as senderID
 			fmt.Println(message)												
 			transmitChan <- message 										//transmitting the mssage
-			waitForEcho(transmitChan, echoChan, message)					//start new goroutine who waits for echo
+			//waitForEcho(transmitChan, echoChan, message)					//start new goroutine who waits for echo
 		}
 	}
 }
 
 func recieveMessage(UDPinChan chan Message, localIP string){
 	recieveChan := make(chan Message)
-	echoChan := make(chan Message)
+	//echoChan := make(chan Message)
 	go bcast.Receiver(MESSAGEPORT, recieveChan)								//starting a receiver to recieve messages
-	go bcast.Transmitter(ECHOPORT, echoChan)								//starting a transmitter to transmit echo
+	//go bcast.Transmitter(ECHOPORT, echoChan)								//starting a transmitter to transmit echo
 	for{
 		select{
 		case  message := <- recieveChan:
 				if(message.RecieverID == localIP){								//checking to see if the message was ment for you
-					echoChan <- message 										//putting out an echo on the echoport
+					//echoChan <- message 										//putting out an echo on the echoport
 					go func(){
 						UDPinChan <- message 									//transmitting the message back to main and further
 					}()
@@ -162,7 +162,7 @@ func recieveMessage(UDPinChan chan Message, localIP string){
 	}
 }
 
-func waitForEcho(transmitChan chan Message, echoChan chan Message, message Message){
+/*func waitForEcho(transmitChan chan Message, echoChan chan Message, message Message){
 
 	ticker := time.NewTicker(time.Millisecond * 1000).C 					//waiting one second between resends
 	i := 0
@@ -184,7 +184,7 @@ func waitForEcho(transmitChan chan Message, echoChan chan Message, message Messa
 			}
 		}
 	}
-}
+}*/
 
 func sendStatus(localIP string){
 	transmitStatus := make (chan bool)

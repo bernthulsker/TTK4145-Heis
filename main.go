@@ -30,6 +30,8 @@ concrurent map read write lol wut?					<----- it ius just fixxed like thye spec 
 func main(){
 	go stateMachine()
 
+	//localLift.Elev_test()
+
 	select{}
 }
 
