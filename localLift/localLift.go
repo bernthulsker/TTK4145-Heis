@@ -140,6 +140,7 @@ func elev_go_to_floor(target chan int, directionChan chan Elev_motor_direction_t
 		if (!stopping){
 			dir := elev_calculate_dir(current_target,current_floor)
 			elev_go(dir)
+
 			if(dir != last_dir){
 				last_dir = dir
 				directionChan <- dir
