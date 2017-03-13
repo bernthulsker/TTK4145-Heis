@@ -26,28 +26,22 @@ func MasterLoop(isMaster 	chan bool, 			masterMessage 	chan Message,
 					break Master
 
 				case messageBackup = <- masterMessage:
-					Println("master recieved message")
 					senderID := messageBackup.SenderID
 					change1 := false
 					change2 := false
 					if (messageBackup.MsgType == 1){
 						messageBackup.Elevators, change1 = IsTheElevatorFinished(messageBackup.Elevators, senderID)
 						messageBackup.Elevators, change2 = CalculateOptimalElevator(messageBackup.Elevators, senderID)
-						Println(change1)
-						Println(change2)
 						if (change1 || change2) {
 							Println("There was a change!")
 							for _,slave := range slaves.Peers{
 								messageBackup.RecieverID = slave
 								messageBackup.MsgType = 2
-								Println(messageBackup)
 								UDPoutChan <- messageBackup
 							}
 						}
 					}
 				case slaves = <- peerChan:
-					Println("maser peerupdate")
-					Println(slaves)
 				}
 			}
 		}

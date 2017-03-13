@@ -98,7 +98,6 @@ func stateMachine(){
 					if(!internet){
 						state = "No internet"
 						stateChan <- state
-						fmt.Println(state)
 						break StateMachine
 					}
 				case currentState = <- currentElevState:
@@ -148,6 +147,7 @@ func treatMessages(	UDPinChan 			chan Message, 	UDPoutChan 		chan Message,
 	messageBackup 			:= Message{Elevators, "", "", 0}
 	masterID 				:= ""
 	state 					:= ""
+	messageBackup.Elevators[localIP] = Elevator{}
 	for{
 		if state == "No internet"{
 			select{
@@ -174,10 +174,12 @@ func treatMessages(	UDPinChan 			chan Message, 	UDPoutChan 		chan Message,
 			fmt.Println("I got a masterID")
 
 		case elev_status := <- elevOut:
+			fmt.Println(elev_status)
+			fmt.Println(localIP)
+			fmt.Println(messageBackup)
 			messageBackup.Elevators[localIP] = elev_status
 			messageBackup.MsgType = 1
 			messageBackup.RecieverID = masterID
-			fmt.Println(masterID)
 			UDPoutChan <- messageBackup
 		case state = <- stateChan:
 		}

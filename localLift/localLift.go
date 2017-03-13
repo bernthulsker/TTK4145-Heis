@@ -7,6 +7,7 @@ import (
 	"../master"
 	"fmt"
 	"time"
+	"strconv"
 )
 
 
@@ -106,7 +107,6 @@ func elev_init(target chan int, lights chan Buttons, statusIn chan Elevator, sta
 		select{
 		case position :=<- floor_sense:
 			if position != 0{
-				fmt.Println("Stop")
 				elev_go(DIRN_STOP)
 				//---Start light controller and status checker----
 				go elev_light_controller(lights)
@@ -141,30 +141,24 @@ func elev_go_to_floor(target chan int, directionChan chan Elev_motor_direction_t
 	for{
 		select{
 		case current_target = <- target:
-			fmt.Println("which")
 		case position:= <- floor:
-			fmt.Println("case")
 			if(position == 0){ 
 				continue 
 			} else{
 				current_floor = position
 			}
 		case <- done_stopping:
-			fmt.Println("does")
 			stopping = false
 		}
 		if !stopping && (current_target >0 && current_target <= FLOORS) {
-			fmt.Println("it")
 			dir := elev_calculate_dir(current_target,current_floor)
 			elev_go(dir)
 			if(dir != last_dir){
 				last_dir = dir
 				directionChan <- dir
 			}
-
 		}
-		if !stopping && current_target == current_floor{
-			fmt.Println("enter")
+		if (!stopping && current_target == current_floor) || (current_target < 1 || current_target > FLOORS){
 			stopping = true
 			directionChan <- DIRN_STOP
 			go elev_stop_at_floor(done_stopping)
@@ -274,22 +268,16 @@ func elev_status_checker(statusIn chan Elevator, statusOut chan Elevator, direct
 		select {
 		case presses 	:= <-buttons:
 			status_elev.Order = presses
-			fmt.Println("Presses")
 			statusOut <- status_elev
 			status_elev.Order = Buttons{}
 		case dir 		:= <- direction:
 			status_elev.Direction = int(dir)
-			fmt.Println("Dirction")
 			statusOut <- status_elev
 		case 			   <-ticker:
-			fmt.Println("Ticker")
 			statusOut <- status_elev
 		case position  	:= <- floor_sense:
-			if position != 0{
-				status_elev.Floor = position
-			}
+			if position != 0{ status_elev.Floor = position }
 			status_elev.Position = position
-			fmt.Println("Position")
 			statusOut <- status_elev
 		case status_elev = <- statusIn:
 		}

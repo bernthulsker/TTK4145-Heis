@@ -34,9 +34,6 @@ func MasterInit(peerChan 		chan PeerUpdate, 	isMaster chan bool,
 	fmt.Println("masterInit")
 	select{
 	case peerInfo := <- peerChan:
-		fmt.Println("Peerinfo: ")
-		fmt.Println(peerInfo)
-		fmt.Println(localIP)
 		companions := peerInfo.Peers
 		if (companions[0] == localIP ){
 			masterID = localIP
@@ -49,7 +46,6 @@ func MasterInit(peerChan 		chan PeerUpdate, 	isMaster chan bool,
 		go askPeersAboutMaster(peerChan, localIP, UDPoutChan)
 		select{
 		case masterID = <- masterIDChan:
-			fmt.Println("masteridchan" + masterID)
 			masterIDChan <- masterID
 		}
 	}
@@ -64,8 +60,6 @@ func UDPUpkeep(	peerChan 	chan PeerUpdate,	peerMasterChan 	chan PeerUpdate,
 		Upkeep:
 			select {
 			case peerInfo := <-peerChan:
-				fmt.Println("Peerupdate")
-
 				companions := peerInfo.Peers
 				lostCompanions := peerInfo.Lost
 				newCompanion := peerInfo.New
@@ -136,8 +130,7 @@ func transmitMessage(UDPoutChan chan Message, localIP string){
 	for{
 		select{
 		case message := <- UDPoutChan:
-			message.SenderID = localIP 										//adding the localIP as senderID
-			fmt.Println(message)												
+			message.SenderID = localIP 										//adding the localIP as senderID											
 			transmitChan <- message 										//transmitting the mssage
 			//waitForEcho(transmitChan, echoChan, message)					//start new goroutine who waits for echo
 		}
