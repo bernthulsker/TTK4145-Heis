@@ -6,19 +6,17 @@ import (
 	"../driver"
 	"../master"
 	"fmt"
+	"time"
 )
 
 
-func LocalMode(internetConnection chan bool, currentStateChan chan Elevator, currentState Elevator) {
-	elevOut 	:= make(chan Elevator)
-	elevIn 		:= make(chan Elevator)
-	elevators 	:= make(map[string]Elevator)
-	localIP  	:= "1"
-	change1 	:= false
-	change2		:= false
+func LocalMode(	internetConnection chan bool, currentStateChan chan Elevator, 
+				elevIn chan Elevator, elevOut chan Elevator, currentState Elevator) {
+	elevators 		:= make(map[string]Elevator)
+	localIP  		:= ""
+	change1 		:= false
+	change2			:= false
 
-	
-	go Elev_driver( elevIn, elevOut)
 	elevators[localIP] = currentState
 	elevIn <- currentState
 	for{
@@ -27,10 +25,11 @@ func LocalMode(internetConnection chan bool, currentStateChan chan Elevator, cur
 			elevators[localIP] = elevator
 			elevators, change1 = master.IsTheElevatorFinished(elevators, localIP)
 			elevators, change2 = master.CalculateOptimalElevator(elevators, localIP)
+			currentState = elevators[localIP]
 			if(change1 || change2){
-				go func (){
+				go func(){
 					fmt.Println(elevators)
-					elevIn <- elevators[localIP]
+					elevIn <- currentState
 					}()
 				change1, change2 = false, false
 			}
@@ -56,7 +55,7 @@ func Elev_driver(incm_elev_update chan Elevator, out_elev_update chan Elevator) 
 		return 0 //The elevator failed to initialize
 	}
 
-
+	time.Sleep(time.Second)
 	//---Normal operation-----------------------------
 	for {
 		select {
@@ -67,7 +66,8 @@ func Elev_driver(incm_elev_update chan Elevator, out_elev_update chan Elevator) 
 				statusIn <- local_lift
 			}()
 		case lift_status := <-statusOut:
-			out_elev_update <- lift_status
+			out_elev_update <- lift_status        									
 		}
 	}
 }
+

@@ -73,7 +73,7 @@ func elev_go_to_floor(target chan int){
 			dir := elev_calculate_dir(current_target,current_floor)
 			elev_go(dir)
 		}
-		if current_target == current_floor{
+		if !stopping && current_target == current_floor{
 			stopping = true
 			go elev_stop_at_floor(done_stopping)
 		}
@@ -240,21 +240,17 @@ func elev_status_checker(statusIn chan Elevator, statusOut chan Elevator) {
 			status_elev.Order = presses
 			statusOut <- status_elev
 			status_elev.Order = Buttons{}
-			fmt.Println("Press")
 		case dir 		:= <- direction:
 			status_elev.Direction = dir
 			statusOut <- status_elev
-			fmt.Println("Dir")
 		case 			   <-ticker:
 			statusOut <- status_elev
-			fmt.Println("Status")
 		case position  	:= <- floor_sense:
 			if position != 0{
 				status_elev.Floor = position
 			}
 			status_elev.Position = position
 			statusOut <- status_elev
-			fmt.Println("POsition")
 		case status_elev = <- statusIn:
 		}
 	}

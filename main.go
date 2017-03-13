@@ -12,13 +12,13 @@ import (
 At ordre plasserers i kø							<---- tight
 Lys													<---- tight
 kjører forbi fjerde									<---- tight
-local mode											<---- tight (Kanskej nå? MÅ teste på datamaskin!)
+local mode											<---- tight
 andre etasje wut?									<---- tight
 processing pairs?									
 spre ordre ved master død
 genrelle feilmeldinger her og der
 
-concrurent map read write lol wut?					<----- dette kommer og går
+concrurent map read write lol wut?					<----- it ius just fixxed like thye spec said man 
 
 
 */
@@ -41,14 +41,16 @@ func stateMachine(){
 	masterMessage 	:= make(chan Message)
 	peerChan 		:= make(chan PeerUpdate)
 	peerMasterChan 	:= make(chan PeerUpdate)
-	isMaster 		:= make(chan bool)
-	masterIDChan 	:= make(chan string)
 	elevOut 		:= make(chan Elevator)
 	elevIn 			:= make(chan Elevator)
+	currentElevState:= make(chan Elevator)
 	internetConnect := make(chan bool)
+	isMaster 		:= make(chan bool)
+	masterIDChan 	:= make(chan string)
+	stateChan 		:= make(chan string)
 	masterID 		:= ""
 	localIP			:= ""
-	state 			:= "Initializing"
+	state 			:= "Initialize elev"
 	currentState 	:= Elevator{}
 	initialized 	:= false
 	go udp.CheckInternetConnection(internetConnect)
@@ -57,7 +59,13 @@ func stateMachine(){
 		StateMachine:
 		switch state {
 
-		case "Initializing":
+		case "Initialize elev":
+
+			go localLift.Elev_driver(elevIn, elevOut)
+
+			state = "Initialize"
+
+		case "Initialize":
 
 			localIP = udp.UDPInit(UDPoutChan, UDPinChan, peerChan)
 			if( localIP == ""){ 
@@ -66,17 +74,19 @@ func stateMachine(){
 			}
 
 			go master.MasterLoop(isMaster, masterMessage, peerMasterChan, UDPoutChan)
-			go treatMessages(UDPinChan, UDPoutChan, masterMessage, masterIDChan, elevIn, elevOut, localIP)
+			go treatMessages(UDPinChan, UDPoutChan, masterMessage, masterIDChan, elevIn, elevOut, currentElevState, stateChan, localIP)
 			masterID = udp.MasterInit(peerChan, isMaster, peerMasterChan, localIP, UDPoutChan, masterIDChan)
 			
-			go localLift.Elev_driver(elevIn, elevOut)
+			
 			go udp.UDPUpkeep(peerChan, peerMasterChan, isMaster, masterIDChan, UDPoutChan, masterID, localIP)
 
 			initialized = true
 
 			state = "Normal operation"
+			stateChan <- state
 
 		case "Normal operation":
+			
 			elevOut <- currentState
 			messageBackup := Message{}
 			messageBackup.Elevators = make(map[string]Elevator)
@@ -85,25 +95,32 @@ func stateMachine(){
 				case internet := <- internetConnect:
 					if(!internet){
 						state = "No internet"
+						stateChan <- state
 						fmt.Println(state)
 						break StateMachine
 					}
+				case currentState = <- currentElevState:
 				}
 			}
 
 		case "No internet":
 
-			internetConnection := make(chan bool)
-			currentStateChan := make(chan Elevator)
-			currentState.Order = currentState.Light 
+			internetConnection 	:= make(chan bool)
+			currentStateChan 	:= make(chan Elevator)
+			currentState.Order 	 = currentState.Light 
 
-			go localLift.LocalMode(internetConnection, currentStateChan, currentState)
+			go localLift.LocalMode(internetConnection, currentStateChan, elevIn, elevOut, currentState)
 			for{
 				select{
 				case internet := <- internetConnect:
 					if(internet){
-						if(initialized) {state = "Normal operation"
-						} else{ state = "Initializing" }
+						if(initialized) {
+							state = "Normal operation"
+							stateChan <- state
+						} else{ 
+							state = "Initialize"
+							stateChan <- state
+							}
 						internetConnection <- true
 						select{
 						case currentState := <- currentStateChan:
@@ -118,16 +135,23 @@ func stateMachine(){
 }
 
 
-func treatMessages(	UDPinChan 		chan Message, 	UDPoutChan 		chan Message, 
-					masterMessage 	chan Message, 	masterIDChan 	chan string, 
-					elevIn 			chan Elevator, 	elevOut 		chan Elevator, 
+func treatMessages(	UDPinChan 			chan Message, 	UDPoutChan 		chan Message, 
+					masterMessage 		chan Message, 	masterIDChan 	chan string, 
+					elevIn 				chan Elevator, 	elevOut 		chan Elevator, 
+					currentElevState 	chan Elevator,	stateChan 		chan string,
 					localIP 		string){
 
 	fmt.Println("Treat Messages")
-	messageBackup := Message{}
-	messageBackup.Elevators = make(map[string]Elevator)
-	masterID := ""
+	messageBackup 			:= Message{}
+	messageBackup.Elevators  = make(map[string]Elevator)
+	masterID 				:= ""
+	state 					:= ""
 	for{
+		if state == "No internet"{
+			select{
+			case state = <- stateChan:
+			}
+		}
 		select{
 		case messageBackup = <- UDPinChan:
 			if (messageBackup.MsgType == 1 && localIP == masterID){
@@ -135,6 +159,7 @@ func treatMessages(	UDPinChan 		chan Message, 	UDPoutChan 		chan Message,
 				masterMessage <- messageBackup
 			} else if (messageBackup.MsgType == 2){
 				elevIn <- messageBackup.Elevators[localIP]
+				currentElevState <- messageBackup.Elevators[localIP]
 			} else if (messageBackup.MsgType == 3){
 				fmt.Println("Someone asked if " + localIP + " is master")
 				master.AmIMaster(messageBackup, masterID, UDPoutChan, localIP)
@@ -150,11 +175,12 @@ func treatMessages(	UDPinChan 		chan Message, 	UDPoutChan 		chan Message,
 			messageBackup.Elevators[localIP] = elev_status
 			messageBackup.MsgType = 1
 			messageBackup.RecieverID = masterID
-			UDPoutChan <- messageBackup                	
+			fmt.Println(masterID)
+			UDPoutChan <- messageBackup
+		case state = <- stateChan:
 		}
 	}
 }
-
 
 
 

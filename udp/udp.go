@@ -8,7 +8,7 @@ import (
 	"time"
 	"fmt"
 	"reflect"
-
+	//"math/rand"
 )
 
 
@@ -34,6 +34,9 @@ func MasterInit(peerChan 		chan PeerUpdate, 	isMaster chan bool,
 	fmt.Println("masterInit")
 	select{
 	case peerInfo := <- peerChan:
+		fmt.Println("Peerinfo: ")
+		fmt.Println(peerInfo)
+		fmt.Println(localIP)
 		companions := peerInfo.Peers
 		if (companions[0] == localIP ){
 			masterID = localIP
@@ -133,7 +136,8 @@ func transmitMessage(UDPoutChan chan Message, localIP string){
 	for{
 		select{
 		case message := <- UDPoutChan:
-			message.SenderID = localIP 										//adding the localIP as senderID												
+			message.SenderID = localIP 										//adding the localIP as senderID
+			fmt.Println(message)												
 			transmitChan <- message 										//transmitting the mssage
 			waitForEcho(transmitChan, echoChan, message)					//start new goroutine who waits for echo
 		}
@@ -148,12 +152,12 @@ func recieveMessage(UDPinChan chan Message, localIP string){
 	for{
 		select{
 		case  message := <- recieveChan:
-			if(message.RecieverID == localIP){								//checking to see if the message was ment for you
-				echoChan <- message 										//putting out an echo on the echoport
-				go func(){
-					UDPinChan <- message 									//transmitting the message back to main and further
-				}()
-			}		
+				if(message.RecieverID == localIP){								//checking to see if the message was ment for you
+					echoChan <- message 										//putting out an echo on the echoport
+					go func(){
+						UDPinChan <- message 									//transmitting the message back to main and further
+					}()
+				}		
 		}
 	}
 }
@@ -165,7 +169,10 @@ func waitForEcho(transmitChan chan Message, echoChan chan Message, message Messa
 	for{
 		select{								
 		case <- ticker:
-			transmitChan <- message 										//rebroadcasting if there is no reply
+			fmt.Println("Rebroadcasting")
+			fmt.Println(message)
+			fmt.Println(message.RecieverID)
+			transmitChan <- message 										//rebroadcasting if there is no reply										
 			i+=1
 			if(i > 5){
 				return											//if no reply in five seconds assume peer lost and stop the  goroutine
@@ -193,16 +200,12 @@ func CheckInternetConnection(internetConnection chan bool) {
 	localIP := " "
 	for{
 		newLocalIP,_ := localip.LocalIP()
-		fmt.Println(newLocalIP)
-		fmt.Println("lol")
 		if(newLocalIP != localIP && newLocalIP == ""){
 			internetConnection <- false
-			fmt.Println("Lost connection")
 			localIP = newLocalIP
 		}
 		if(newLocalIP != localIP){
 			internetConnection <- true
-			fmt.Println("Gained connection")
 			localIP = newLocalIP
 		}
 		time.Sleep(time.Second)		
