@@ -128,27 +128,24 @@ func elev_go_to_floor(target chan int, directionChan chan Elev_motor_direction_t
 	for{
 		select{
 		case current_target = <- target:
-
 		case position:= <- floor:
 			if(position == 0){ 
 				continue 
 			} else{
 				current_floor = position
 			}
-
 		case <- done_stopping:
 			stopping = false
 		}
-
 		if (!stopping){
-		dir := elev_calculate_dir(current_target,current_floor)
-		elev_go(dir)
+			dir := elev_calculate_dir(current_target,current_floor)
+			elev_go(dir)
+
 			if(dir != last_dir){
 				last_dir = dir
 				directionChan <- dir
 			}
 		}
-
 		if(current_target == current_floor){
 			stopping = true
 			elev_go(DIRN_STOP)
