@@ -64,11 +64,7 @@ func Elev_driver(incm_elev_update chan Elevator, out_elev_update chan Elevator) 
 		case local_lift := <-incm_elev_update:
 			lights <- local_lift.Light
 			statusIn <- local_lift 
-			if(local_lift.Queue[0] <= FLOORS && local_lift.Queue[0] > 0){
-				target <- local_lift.Queue[0]	
-			} else{
-				fmt.Println("Rubbish in elevdriver")
-			}
+			target <- local_lift.Queue[0]	
 		}
 	}
 }
@@ -137,7 +133,7 @@ func elev_go_to_floor(target chan int, directionChan chan Elev_motor_direction_t
 		case <- done_stopping:
 			stopping = false
 		}
-		if (!stopping){
+		if (!stopping && (current_target <= FLOORS && current_target > 0)){
 			dir := elev_calculate_dir(current_target,current_floor)
 			elev_go(dir)
 
@@ -146,7 +142,7 @@ func elev_go_to_floor(target chan int, directionChan chan Elev_motor_direction_t
 				directionChan <- dir
 			}
 		}
-		if(current_target == current_floor){
+		if(current_target == current_floor) && (current_target <= FLOORS && current_target > 0){
 			stopping = true
 			elev_go(DIRN_STOP)
 			directionChan <- DIRN_STOP
