@@ -42,6 +42,7 @@ func LocalMode(	internetConnection chan bool, currentStateChan chan Elevator,
 }
 
 func Elev_driver(incm_elev_update chan Elevator, out_elev_update chan Elevator) int {
+	time.Sleep(time.Second*3)
 	//---Create channels------------------------------
 	target 		:= make(chan int)
 	lights 		:= make(chan Buttons)

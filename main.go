@@ -158,6 +158,7 @@ func treatMessages(	UDPinChan 			chan Message, 	UDPoutChan 		chan Message,
 		case messageBackup = <- UDPinChan:
 			if (messageBackup.MsgType == 1 && localIP == masterID){
 				fmt.Println("I got an order and my ID is " + localIP)
+				//fmt.Println(messageBackup)
 				masterMessage <- messageBackup
 			} else if (messageBackup.MsgType == 2){
 				elevIn <- messageBackup.Elevators[localIP]
@@ -178,6 +179,7 @@ func treatMessages(	UDPinChan 			chan Message, 	UDPoutChan 		chan Message,
 
 		case elev_status := <- elevOut:
 			messageBackup.Elevators[localIP] = elev_status
+			fmt.Println(messageBackup)
 			messageBackup.MsgType = 1
 			messageBackup.RecieverID = masterID
 			UDPoutChan <- messageBackup

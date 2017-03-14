@@ -45,7 +45,7 @@ func MasterInit(peerChan 		chan PeerUpdate, 	isMaster chan bool,
 		}
 	}
 	askPeersAboutMaster(peerInfo, localIP, UDPoutChan)
-	timer2 := time.NewTimer(time.Second*3).C
+	timer2 := time.NewTimer(time.Second*2).C
 	select{
 	case masterID = <- masterIDChan:
 		fmt.Println("Init got a masterID " + masterID)
