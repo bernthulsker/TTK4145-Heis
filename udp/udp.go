@@ -123,6 +123,9 @@ func askPeersAboutMaster(peerInfo PeerUpdate, localIP string, UDPoutChan chan Me
 
 func askAboutMaster(companion string, localIP string, UDPoutChan chan Message) {
 	Elevators 	:= make(map[string]Elevator)
+	elev := Elevator{}
+	elev.Floor = 1
+	Elevators[localIP] = elev
 	msg 		:= Message{Elevators, localIP, companion, 3}
 	UDPoutChan	<- msg
 	return
