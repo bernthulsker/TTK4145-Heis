@@ -16,38 +16,42 @@ func MasterLoop(isMaster 	chan bool, 			masterMessage 	chan Message,
 	messageBackup := Message{}
 	for{
 		select{
-		case  <- isMaster:
-			Println("I AM MASTA")
-			Master:
-			for{
-				select{									
-				case <- isMaster:
-					Println("Break master")
-					break Master
-
-				case messageBackup = <- masterMessage:
-					Println("Master got message")
-					senderID := messageBackup.SenderID
-					change1 := false
-					change2 := false
-					if (messageBackup.MsgType == 1){
-						messageBackup.Elevators, change1 = IsTheElevatorFinished(messageBackup.Elevators, senderID)
-						messageBackup.Elevators, change2 = CalculateOptimalElevator(messageBackup.Elevators, senderID)
-						if (change1 || change2) {
-							Println("There was a change!")
-							for _,slave := range slaves.Peers{
-								messageBackup.RecieverID = slave
-								messageBackup.MsgType = 2
-								messageCopy := messageBackup		//Making a copy to avoid channel passing map pointers problems
-								UDPoutChan <- messageCopy
+		case iMaster := <- isMaster:
+			if(iMaster){
+				Println("I AM MASTA")
+				Master:
+				for{
+					select{									
+					case iMaster = <- isMaster:
+						if(!iMaster){
+							Println("Break master")
+							break Master
+						}
+					case messageBackup = <- masterMessage:
+						Println("Master got message")
+						senderID := messageBackup.SenderID
+						change1 := false
+						change2 := false
+						if (messageBackup.MsgType == 1){
+							messageBackup.Elevators, change1 = IsTheElevatorFinished(messageBackup.Elevators, senderID)
+							messageBackup.Elevators, change2 = CalculateOptimalElevator(messageBackup.Elevators, senderID)
+							Println(messageBackup)
+							if (change1 || change2) {
+								Println("There was a change!")
+								for _,slave := range slaves.Peers{
+									messageBackup.RecieverID = slave
+									messageBackup.MsgType = 2
+									messageCopy := messageBackup		//Making a copy to avoid channel passing map pointers problems
+									UDPoutChan <- messageCopy
+								}
 							}
 						}
+					case slaves = <- peerChan:
+						messageBackup.MsgType = 2
+						messageBackup.RecieverID = slaves.New
+						messageCopy := messageBackup			//Making a copy to avoid channel passing map pointers problems
+						UDPoutChan <- messageCopy
 					}
-				case slaves = <- peerChan:
-					messageBackup.MsgType = 2
-					messageBackup.RecieverID = slaves.New
-					messageCopy := messageBackup			//Making a copy to avoid channel passing map pointers problems
-					UDPoutChan <- messageCopy
 				}
 			}
 		}
@@ -60,17 +64,17 @@ func IsTheElevatorFinished(slaves map[string]Elevator, senderIP string) (map[str
 	change := false
 	i :=0
 
-	//making a map with pointers that is possible to change
-	for key, element := range slaves{
-		slavetemp[i] = element
+	//making a map with pointers that is possible to change wtf?
+	for key := range slaves{
+		slavetemp[i] = slaves[key]
 		slavePointer[key] = &(slavetemp[i])
 		i++
 	}
 	
-	sender := (slavePointer[senderIP])
+	sender := *(slavePointer[senderIP])
 	position := sender.Position
 	if (position != 0){
-		if(position == sender.Queue[0]){
+		if(position == sender.Queue[0] && sender.Direction == 0){
 			change = true 
 			for i := range sender.Queue{
 				if (i == (len(sender.Queue)-1)){
@@ -88,15 +92,16 @@ func IsTheElevatorFinished(slaves map[string]Elevator, senderIP string) (map[str
 				sender.Light.ExtDwnButtons[(position-2)] = 0
 			}
 			sender.Light.IntButtons[position-1] = 0
+			Println(sender)
 		}
 
 	}
-
+	slavePointer[senderIP] = &sender
 
 	//converting the map back to normal map without pointers
 	elementMap := make(map[string]Elevator)
-	for key, element := range slavePointer{
-		elementMap[key] = *element
+	for key := range slavePointer{
+		elementMap[key] = *slavePointer[key]
 	}
 	return elementMap, change
 }
@@ -165,6 +170,7 @@ func CalculateOptimalElevator(slaves map[string]Elevator, senderIP string) (map[
 		} else {
 			change = true
 			senderElevator.Light.IntButtons[i] = 1
+			senderElevator.Order.IntButtons[i] = 0
 			for j,queueElement := range senderElevator.Queue{
 				if( i+1 == queueElement){
 					break

@@ -55,7 +55,6 @@ func stateMachine(){
 	state 			:= "Initialize elev"
 	currentState 	:= Elevator{}
 	initialized 	:= false
-	go udp.CheckInternetConnection(internetConnect)
 
 	for{
 		StateMachine:
@@ -63,36 +62,41 @@ func stateMachine(){
 
 		case "Initialize elev":
 
+			fmt.Println(state)
+			go udp.CheckInternetConnection(internetConnect)
 			go localLift.Elev_driver(elevIn, elevOut)
 
 			state = "Initialize"
 
 		case "Initialize":
 
+			fmt.Println(state)
+			
 			localIP = udp.UDPInit(UDPoutChan, UDPinChan, peerChan)
 			if( localIP == ""){ 
 				state = "No internet"
 				break 
 			}
+			if (!initialized){
+				go master.MasterLoop(isMaster, masterMessage, peerMasterChan, UDPoutChan)
+				go treatMessages(UDPinChan, UDPoutChan, masterMessage, masterIDChan, elevIn, elevOut, currentElevState, stateChan, localIP)
+				masterID = udp.MasterInit(peerChan, isMaster, peerMasterChan, localIP, UDPoutChan, masterIDChan)
+				
+				
+				go udp.UDPUpkeep(peerChan, peerMasterChan, isMaster, masterIDChan, UDPoutChan, masterID, localIP)
 
-			go master.MasterLoop(isMaster, masterMessage, peerMasterChan, UDPoutChan)
-			go treatMessages(UDPinChan, UDPoutChan, masterMessage, masterIDChan, elevIn, elevOut, currentElevState, stateChan, localIP)
-			masterID = udp.MasterInit(peerChan, isMaster, peerMasterChan, localIP, UDPoutChan, masterIDChan)
-			
-			
-			go udp.UDPUpkeep(peerChan, peerMasterChan, isMaster, masterIDChan, UDPoutChan, masterID, localIP)
-
-			initialized = true
+				initialized = true
+			}
 
 			state = "Normal operation"
 			stateChan <- state
 
 		case "Normal operation":
-			
+
+			fmt.Println(state)
 			currentStateCopy := currentState 							//Making a copy to avoid channel passing map pointers problems
 			elevOut <- currentStateCopy
-			messageBackup := Message{}
-			messageBackup.Elevators = make(map[string]Elevator)
+
 			for{
 				select{
 				case internet := <- internetConnect:
@@ -107,6 +111,7 @@ func stateMachine(){
 
 		case "No internet":
 
+			fmt.Println(state)
 			internetConnection 	:= make(chan bool)
 			currentStateChan 	:= make(chan Elevator)
 			currentState.Order 	 = currentState.Light 
@@ -116,16 +121,15 @@ func stateMachine(){
 				select{
 				case internet := <- internetConnect:
 					if(internet){
-						if(initialized) {
-							state = "Normal operation"
-							stateChan <- state
-						} else{ 
-							state = "Initialize"
-							stateChan <- state
-							}
+						fmt.Println("There is internet!")
+						state = "Initialize"
+						fmt.Println(state)
+						fmt.Println("Do youever feel like a plastic bag drifting thought the wind wanting to start again? Do you ever feel just so paper thin")
 						internetConnection <- true
+						fmt.Println("FLY YOU FOOLS")
 						select{
-						case currentState := <- currentStateChan:
+						case currentState = <- currentStateChan:
+							fmt.Println(currentState)
 							currentState.Order = currentState.Light 
 							break StateMachine
 						}

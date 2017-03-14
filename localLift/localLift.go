@@ -21,7 +21,9 @@ func LocalMode(	internetConnection chan bool, currentStateChan chan Elevator,
 
 	elevators[localIP] = currentState
 	elevIn <- currentState
+	fmt.Println(currentState)
 	for{
+		fmt.Println(elevators)
 		select{
 		case elevator := <- elevOut:
 			elevators[localIP] = elevator
@@ -29,12 +31,11 @@ func LocalMode(	internetConnection chan bool, currentStateChan chan Elevator,
 			elevators, change2 = master.CalculateOptimalElevator(elevators, localIP)
 			currentState = elevators[localIP]
 			if(change1 || change2){
-				go func(){
-					elevIn <- currentState
-					}()
+				elevIn <- currentState
 				change1, change2 = false, false
 			}
 		case <- internetConnection:
+			fmt.Println("WE GOT MAIL!")
 			currentStateChan <- elevators[localIP] 
 			return
 		}
@@ -272,7 +273,8 @@ func elev_status_checker(statusIn chan Elevator, statusOut chan Elevator, direct
 		case 			   <-ticker:
 			statusOut <- status_elev
 		case position  	:= <- floor_sense:
-			if position != 0{ status_elev.Floor = position }
+			if position != 0 { status_elev.Floor = position }
+			fmt.Println("New Position")
 			status_elev.Position = position
 			statusOut <- status_elev
 		case status_elev = <- statusIn:

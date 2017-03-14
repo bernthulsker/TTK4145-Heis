@@ -201,17 +201,22 @@ func recieveStatus(peerChan chan PeerUpdate){
 }
 
 func CheckInternetConnection(internetConnection chan bool) {
-	localIP := " "
-	for{
-		newLocalIP,_ := localip.LocalIP()
-		if(newLocalIP != localIP && newLocalIP == ""){
-			internetConnection <- false
-			localIP = newLocalIP
+	ticker := time.NewTicker(time.Second).C
+	transmitChan := make(chan bool)
+	recieveChan := make(chan bool)
+	go bcast.Transmitter(CONNCHECKPORT, transmitChan)
+	go bcast.Receiver(CONNCHECKPORT, recieveChan)
+	for {
+		select{
+		case <- ticker:
+			transmitChan <- true
+			timer := time.NewTimer(time.Second).C
+			select {
+			case <- timer:
+				internetConnection <- false
+			case <- recieveChan:
+				internetConnection <- true
+			}
 		}
-		if(newLocalIP != localIP){
-			internetConnection <- true
-			localIP = newLocalIP
-		}
-		time.Sleep(time.Second)		
 	}
 }

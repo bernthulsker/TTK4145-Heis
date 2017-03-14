@@ -8,6 +8,7 @@ const FLOORS 		int = 4
 const MESSAGEPORT 	int = 20200
 const ECHOPORT 		int = 20201
 const STATUSPORT 	int = 20202
+const CONNCHECKPORT int = 20203
 
 type Buttons struct {
 	IntButtons    	[FLOORS]int
