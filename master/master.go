@@ -59,8 +59,8 @@ func IsTheElevatorFinished(slaves map[string]Elevator, senderIP string) (map[str
 	i :=0
 
 	//making a map with pointers that is possible to change
-	for key := range slaves{
-		slavetemp[i] = slaves[key]
+	for key, element := range slaves{
+		slavetemp[i] = element
 		slavePointer[key] = &(slavetemp[i])
 		i++
 	}
@@ -87,6 +87,7 @@ func IsTheElevatorFinished(slaves map[string]Elevator, senderIP string) (map[str
 			}
 			sender.Light.IntButtons[position-1] = 0
 		}
+
 	}
 
 
@@ -108,8 +109,8 @@ func CalculateOptimalElevator(slaves map[string]Elevator, senderIP string) (map[
 	i :=0
 
 	//making a map with pointers that is possible to change
-	for key := range slaves{
-		slavetemp[i] = slaves[key]
+	for key,element := range slaves{
+		slavetemp[i] = element
 		slavePointer[key] = &(slavetemp[i])
 		i++
 	}
@@ -124,8 +125,10 @@ func CalculateOptimalElevator(slaves map[string]Elevator, senderIP string) (map[
 			change = true
 			leastCostID, firstZero = calculateOptimalElevatorAssignment(slavePointer, i+1)
 			optimalSlave := slavePointer[leastCostID]
-			(*optimalSlave).Light.ExtUpButtons[i] = 1
 			(*optimalSlave).Order.ExtUpButtons[i] = 0
+			for _, element := range slavePointer{
+				(*element).Light.ExtUpButtons[i] = 1
+			}
 			if(firstZero == -1){
 				continue
 			} else{
@@ -141,7 +144,10 @@ func CalculateOptimalElevator(slaves map[string]Elevator, senderIP string) (map[
 			change = true
 			leastCostID, firstZero = calculateOptimalElevatorAssignment(slavePointer, i+2)
 			optimalSlave := slavePointer[leastCostID]
-			(*optimalSlave).Light.ExtDwnButtons[i] = 1
+			(*optimalSlave).Order.ExtDwnButtons[i] = 0
+			for _, element := range slavePointer{
+				(*element).Light.ExtDwnButtons[i] = 1
+			}
 			if(firstZero == -1){
 				continue
 			} else{
@@ -215,6 +221,7 @@ func AmIMaster(message Message, masterID string, UDPoutChan chan Message, localI
 	if(masterID == localIP){
 		Println("I am a master and my ID is " + localIP)
 		message.MsgType = 4
+		message.Floor = 1
 		message.RecieverID = message.SenderID
 		message.SenderID = localIP
 		UDPoutChan <- message
