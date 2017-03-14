@@ -6,14 +6,11 @@ import (
 	"./bcast"
 	"./peers"
 	"time"
-	"fmt"
-	//"reflect"
-	//"math/rand"
+	"reflect"
 )
 
 
 func UDPInit(UDPoutChan chan Message, UDPinChan chan Message, peerChan chan PeerUpdate) (localIP string) {
-	fmt.Println("UDPinit")
 
 	localIP, err := localip.LocalIP()
 	if err != nil {
@@ -31,15 +28,13 @@ func UDPInit(UDPoutChan chan Message, UDPinChan chan Message, peerChan chan Peer
 func MasterInit(peerChan 		chan PeerUpdate, 	isMaster chan bool, 
 				peerMasterChan 	chan PeerUpdate, 	localIP string, 
 				UDPoutChan 		chan Message, 		masterIDChan chan string,) (masterID string){
-	fmt.Println("masterInit")
 	timer := time.NewTimer(time.Millisecond*500).C
 	peerInfo := PeerUpdate{}
 	For:
 	for{
 		select{
 		case peerInfo = <- peerChan:
-			fmt.Println("PeerUpdate")
-			fmt.Println(peerInfo)
+
 		case <- timer:
 			break For
 		}
@@ -48,10 +43,8 @@ func MasterInit(peerChan 		chan PeerUpdate, 	isMaster chan bool,
 	timer2 := time.NewTimer(time.Second*2).C
 	select{
 	case masterID = <- masterIDChan:
-		fmt.Println("Init got a masterID " + masterID)
 		break
 	case <- timer2:
-		fmt.Println("Is this why you believe tyou are master?")
 		masterID = localIP
 		isMaster <- true
 		masterIDChan <- masterID
@@ -69,7 +62,6 @@ func UDPUpkeep(	peerChan 	chan PeerUpdate,	peerMasterChan 	chan PeerUpdate,
 		Upkeep:
 			select {
 			case peerInfo := <-peerChan:
-				fmt.Println("Peerupdate UDPupkeep")
 				companions := peerInfo.Peers
 				lostCompanions := peerInfo.Lost
 				newCompanion := peerInfo.New
@@ -133,30 +125,30 @@ func askAboutMaster(companion string, localIP string, UDPoutChan chan Message) {
 
 func transmitMessage(UDPoutChan chan Message, localIP string){
 	transmitChan := make(chan Message)
-	//echoChan := make(chan Message)
+	echoChan := make(chan Message)
 	go bcast.Transmitter(MESSAGEPORT, transmitChan)
-	//go bcast.Receiver(ECHOPORT, echoChan)
+	go bcast.Receiver(ECHOPORT, echoChan)
 	for{
 		select{
 		case message := <- UDPoutChan:
 			message.SenderID = localIP 										//adding the localIP as senderID
 			messageCopy := message 											//Making a copy to avoid channel passing map pointers problems											
 			transmitChan <- messageCopy										//transmitting the mssage
-			//waitForEcho(transmitChan, echoChan, message)					//start new goroutine who waits for echo
+			waitForEcho(transmitChan, echoChan, message)					//start new goroutine who waits for echo
 		}
 	}
 }
 
 func recieveMessage(UDPinChan chan Message, localIP string){
 	recieveChan := make(chan Message)
-	//echoChan := make(chan Message)
+	echoChan := make(chan Message)
 	go bcast.Receiver(MESSAGEPORT, recieveChan)								//starting a receiver to recieve messages
-	//go bcast.Transmitter(ECHOPORT, echoChan)								//starting a transmitter to transmit echo
+	go bcast.Transmitter(ECHOPORT, echoChan)								//starting a transmitter to transmit echo
 	for{
 		select{
 		case  message := <- recieveChan:
 				if(message.RecieverID == localIP){								//checking to see if the message was ment for you
-					//echoChan <- message 										//putting out an echo on the echoport
+					echoChan <- message 										//putting out an echo on the echoport
 					messageCopy := message										//Making a copy to avoid channel passing map pointers problems
 					go func(){
 						UDPinChan <- messageCopy 									//transmitting the message back to main and further
@@ -166,21 +158,17 @@ func recieveMessage(UDPinChan chan Message, localIP string){
 	}
 }
 
-/*func waitForEcho(transmitChan chan Message, echoChan chan Message, message Message){
+func waitForEcho(transmitChan chan Message, echoChan chan Message, message Message){
 
 	ticker := time.NewTicker(time.Millisecond * 1000).C 					//waiting one second between resends
 	i := 0
 	for{
 		select{								
 		case <- ticker:
-			fmt.Println("Rebroadcasting")
-			fmt.Println(message)
-			fmt.Println(message.RecieverID)
 			transmitChan <- message 										//rebroadcasting if there is no reply										
 			i+=1
 			if(i > 5){
 				return											//if no reply in five seconds assume peer lost and stop the  goroutine
-				//HER MÅ OGSÅ MELDINGENE SENDES TILBAKE SÅ DE KAN BEHANDLS PÅ NYTT OG SENDES TIL NY RIKTIG PEER
 			}
 		case echo := <-echoChan:
 			if(reflect.DeepEqual(echo.Elevators, message.Elevators) && echo.MsgType == message.MsgType){ 	//checking to see if you recieved the right echo
@@ -188,7 +176,7 @@ func recieveMessage(UDPinChan chan Message, localIP string){
 			}
 		}
 	}
-}*/
+}
 
 func sendStatus(localIP string){
 	transmitStatus := make (chan bool)
@@ -196,7 +184,7 @@ func sendStatus(localIP string){
 }
 
 func recieveStatus(peerChan chan PeerUpdate){
-	//i need another line
+	
 	go peers.Receiver(STATUSPORT, peerChan)
 }
 

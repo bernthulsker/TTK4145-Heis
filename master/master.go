@@ -2,8 +2,6 @@ package master
 
 import (
 	."../definitions"
-	."fmt"
-	//"strconv"
 )
 
 
@@ -11,33 +9,28 @@ import (
 func MasterLoop(isMaster 	chan bool, 			masterMessage 	chan Message, 
 				peerChan 	chan PeerUpdate, 	UDPoutChan 		chan Message){
 	
-	Println("MasterLoop")
+
 	slaves := PeerUpdate{}
 	messageBackup := Message{}
 	for{
 		select{
 		case iMaster := <- isMaster:
 			if(iMaster){
-				Println("I AM MASTA")
 				Master:
 				for{
 					select{									
 					case iMaster = <- isMaster:
 						if(!iMaster){
-							Println("Break master")
 							break Master
 						}
 					case messageBackup = <- masterMessage:
-						Println("Master got message")
 						senderID := messageBackup.SenderID
 						change1 := false
 						change2 := false
 						if (messageBackup.MsgType == 1){
 							messageBackup.Elevators, change1 = IsTheElevatorFinished(messageBackup.Elevators, senderID)
 							messageBackup.Elevators, change2 = CalculateOptimalElevator(messageBackup.Elevators, senderID)
-							Println(messageBackup)
 							if (change1 || change2) {
-								Println("There was a change!")
 								for _,slave := range slaves.Peers{
 									messageBackup.RecieverID = slave
 									messageBackup.MsgType = 2
@@ -92,7 +85,6 @@ func IsTheElevatorFinished(slaves map[string]Elevator, senderIP string) (map[str
 				sender.Light.ExtDwnButtons[(position-2)] = 0
 			}
 			sender.Light.IntButtons[position-1] = 0
-			Println(sender)
 		}
 
 	}
@@ -227,7 +219,6 @@ func calculateOptimalElevatorAssignment(slaves map[string]*Elevator, order int) 
 
 func AmIMaster(message Message, masterID string, UDPoutChan chan Message, localIP string){
 	if(masterID == localIP){
-		Println("I am a master and my ID is " + localIP)
 		elev := Elevator{}
 		elev.Floor = 1
 		message.MsgType = 4

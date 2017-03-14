@@ -1,6 +1,5 @@
 package definitions
 
-const MOTOR_SPEED 	int 	= 2800
 	
 const ELEVATORS 	int 	= 3
 const FLOORS 		int 	= 4
