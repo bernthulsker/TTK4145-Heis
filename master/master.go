@@ -220,8 +220,10 @@ func calculateOptimalElevatorAssignment(slaves map[string]*Elevator, order int) 
 func AmIMaster(message Message, masterID string, UDPoutChan chan Message, localIP string){
 	if(masterID == localIP){
 		Println("I am a master and my ID is " + localIP)
+		elev := Elevator{}
+		elev.Floor = 1
 		message.MsgType = 4
-		message.Floor = 1
+		message.Elevators[localIP] = elev
 		message.RecieverID = message.SenderID
 		message.SenderID = localIP
 		UDPoutChan <- message
