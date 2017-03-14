@@ -1,14 +1,14 @@
-
 package definitions
 
-const MOTOR_SPEED 	int = 2800
-
-const ELEVATORS 	int = 3
-const FLOORS 		int = 4
-const MESSAGEPORT 	int = 20200
-const ECHOPORT 		int = 20201
-const STATUSPORT 	int = 20202
-const CONNCHECKPORT int = 20203
+const MOTOR_SPEED 	int 	= 2800
+	
+const ELEVATORS 	int 	= 3
+const FLOORS 		int 	= 4
+const MESSAGEPORT 	int 	= 20200
+const ECHOPORT 		int 	= 20201
+const STATUSPORT 	int 	= 20202
+const CONNCHECKPORT int 	= 20203
+const FILENAME		string 	= "heart.txt"
 
 type Buttons struct {
 	IntButtons    	[FLOORS]int
@@ -18,7 +18,7 @@ type Buttons struct {
 
 type Elevator struct {
 	Floor     		int 				//Last floor visited
-	Position  		int 				//SONDRE MÅ FÅ VITE HVOR HEISEN ER !!!!!!! "get some help"
+	Position  		int 				
 	Direction 		int
 	Light     		Buttons
 	Order     		Buttons

@@ -5,35 +5,28 @@ import (
 	"./localLift"
 	"./udp"
 	"./master"
-	//"time"
+	."./watchDog"
 	"fmt"
+	//"time"
 )
-/*
-At ordre plasserers i kø							<---- tight
-Lys													<---- tight
-kjører forbi fjerde									<---- tight
-local mode											<---- tight
-andre etasje wut?									<---- tight
-processing pairs?									
-spre ordre ved master død
-genrelle feilmeldinger her og der
-
-concrurent map read write lol wut?					<----- it ius just fixxed like thye spec said man 
-
-
-*/
-
 
 
 
 
 func main(){
-	go stateMachine()
 
-	//localLift.Elev_test()
+	WatchDog()
+
+	go stateMachine()
+	go Heartbeat()
+
+	StartBackup()
+	fmt.Println("This is the end")
+	
 
 	select{}
 }
+
 
 
 func stateMachine(){
