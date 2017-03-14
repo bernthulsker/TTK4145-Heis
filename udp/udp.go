@@ -141,7 +141,7 @@ func transmitMessage(UDPoutChan chan Message, localIP string){
 		case message := <- UDPoutChan:
 			message.SenderID = localIP 										//adding the localIP as senderID
 			messageCopy := message 											//Making a copy to avoid channel passing map pointers problems											
-			transmitChan <- message 										//transmitting the mssage
+			transmitChan <- messageCopy										//transmitting the mssage
 			//waitForEcho(transmitChan, echoChan, message)					//start new goroutine who waits for echo
 		}
 	}

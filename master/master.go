@@ -45,7 +45,7 @@ func MasterLoop(isMaster 	chan bool, 			masterMessage 	chan Message,
 					}
 				case slaves = <- peerChan:
 					messageBackup.MsgType = 2
-					messageBackup.RecieverID = slaves.
+					messageBackup.RecieverID = slaves.New
 					messageCopy := messageBackup			//Making a copy to avoid channel passing map pointers problems
 					UDPoutChan <- messageCopy
 				}
@@ -228,7 +228,7 @@ func AmIMaster(message Message, masterID string, UDPoutChan chan Message, localI
 		message.Elevators[localIP] = elev
 		message.RecieverID = message.SenderID
 		message.SenderID = localIP
-		messageCopy = message 							//Making a copy to avoid channel passing map pointers problems
+		messageCopy := message 							//Making a copy to avoid channel passing map pointers problems
 		UDPoutChan <- messageCopy
 	}
 }
