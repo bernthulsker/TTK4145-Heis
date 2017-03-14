@@ -89,7 +89,8 @@ func stateMachine(){
 
 		case "Normal operation":
 			
-			elevOut <- currentState
+			currentStateCopy := currentState 							//Making a copy to avoid channel passing map pointers problems
+			elevOut <- currentStateCopy
 			messageBackup := Message{}
 			messageBackup.Elevators = make(map[string]Elevator)
 			for{
@@ -160,12 +161,11 @@ func treatMessages(	UDPinChan 			chan Message, 	UDPoutChan 		chan Message,
 				messageBackup = tempMessage
 				if (messageBackup.MsgType == 1 && localIP == masterID){
 					fmt.Println("I got an order and my ID is " + localIP)
-					fmt.Println(messageBackup)
-					masterMessage <- messageBackup
+					messageCopy := messageBackup    								//Making a copy to avoid channel passing map pointers problems
+					masterMessage <- messageCopy
 				} else if (messageBackup.MsgType == 2){
 					elevIn <- messageBackup.Elevators[localIP]
 					fmt.Println(localIP + " got a queue")
-					fmt.Println(messageBackup.Elevators[localIP])
 					currentElevState <- messageBackup.Elevators[localIP]
 				} else if (messageBackup.MsgType == 3){
 					fmt.Println("Someone asked if " + localIP + " is master")
@@ -181,11 +181,11 @@ func treatMessages(	UDPinChan 			chan Message, 	UDPoutChan 		chan Message,
 
 		case elev_status := <- elevOut:
 			messageBackup.Elevators[localIP] = elev_status
-			//fmt.Println("This is a elev-status")
-			//fmt.Println(messageBackup)
 			messageBackup.MsgType = 1
 			messageBackup.RecieverID = masterID
-			UDPoutChan <- messageBackup
+			messageCopy := messageBackup    									//Making a copy to avoid channel passing map pointers problems
+			UDPoutChan <- messageCopy
+
 		case state = <- stateChan:
 		}
 	}

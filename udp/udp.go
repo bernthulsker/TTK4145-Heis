@@ -139,7 +139,8 @@ func transmitMessage(UDPoutChan chan Message, localIP string){
 	for{
 		select{
 		case message := <- UDPoutChan:
-			message.SenderID = localIP 										//adding the localIP as senderID											
+			message.SenderID = localIP 										//adding the localIP as senderID
+			messageCopy := message 											//Making a copy to avoid channel passing map pointers problems											
 			transmitChan <- message 										//transmitting the mssage
 			//waitForEcho(transmitChan, echoChan, message)					//start new goroutine who waits for echo
 		}
@@ -156,8 +157,9 @@ func recieveMessage(UDPinChan chan Message, localIP string){
 		case  message := <- recieveChan:
 				if(message.RecieverID == localIP){								//checking to see if the message was ment for you
 					//echoChan <- message 										//putting out an echo on the echoport
+					messageCopy := message										//Making a copy to avoid channel passing map pointers problems
 					go func(){
-						UDPinChan <- message 									//transmitting the message back to main and further
+						UDPinChan <- messageCopy 									//transmitting the message back to main and further
 					}()
 				}		
 		}
