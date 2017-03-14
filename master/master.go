@@ -42,6 +42,9 @@ func MasterLoop(isMaster 	chan bool, 			masterMessage 	chan Message,
 						}
 					}
 				case slaves = <- peerChan:
+					messageBackup.MsgType = 2
+					messageBackup.RecieverID = slaves.New
+					messageBackup.SenderID = masterID
 					UDPoutChan <- messageBackup
 				}
 			}

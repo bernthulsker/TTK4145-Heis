@@ -172,6 +172,7 @@ func treatMessages(	UDPinChan 			chan Message, 	UDPoutChan 		chan Message,
 				masterIDChan <- messageBackup.SenderID
 				masterID = messageBackup.SenderID
 			}
+
 		case masterID = <- masterIDChan:
 			fmt.Println("I got a masterID" + masterID)
 

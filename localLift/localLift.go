@@ -112,10 +112,12 @@ func elev_calculate_dir(target int,floor int) (Elev_motor_direction_t){
 }
 
 func elev_go_to_floor(target chan int, directionChan chan Elev_motor_direction_t){
-	done_stopping := make(chan bool)
-	floor 		:= make(chan int)
-	stopping 	:= false
-	last_dir 	:= DIRN_STOP
+	done_stopping 	:= make(chan bool)
+	floor 			:= make(chan int)
+	stopping 		:= false
+	last_dir 		:= DIRN_STOP
+	ticker 			:= time.NewTicker(time.Second).C
+
 
 	go elev_poll_floor_sensor(floor)
 	current_floor:= <- floor
@@ -132,11 +134,19 @@ func elev_go_to_floor(target chan int, directionChan chan Elev_motor_direction_t
 			}
 		case <- done_stopping:
 			stopping = false
+		case <- ticker:
+			if (!stopping && (current_target <= FLOORS && current_target > 0)){
+				dir := elev_calculate_dir(current_target,current_floor)
+				elev_go(dir)
+				if(dir != last_dir){
+					last_dir = dir
+					directionChan <- dir
+				}
+			}
 		}
 		if (!stopping && (current_target <= FLOORS && current_target > 0)){
 			dir := elev_calculate_dir(current_target,current_floor)
 			elev_go(dir)
-
 			if(dir != last_dir){
 				last_dir = dir
 				directionChan <- dir
