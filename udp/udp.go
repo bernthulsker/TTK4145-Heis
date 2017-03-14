@@ -30,7 +30,7 @@ func UDPInit(UDPoutChan chan Message, UDPinChan chan Message, peerChan chan Peer
 
 func MasterInit(peerChan 		chan PeerUpdate, 	isMaster chan bool, 
 				peerMasterChan 	chan PeerUpdate, 	localIP string, 
-				UDPoutChan 		chan Message, 		masterIDChan chan string) (masterID string){
+				UDPoutChan 		chan Message, 		masterIDChan chan string,) (masterID string){
 	fmt.Println("masterInit")
 	timer := time.NewTimer(time.Millisecond*500).C
 	peerInfo := PeerUpdate{}
@@ -69,6 +69,7 @@ func UDPUpkeep(	peerChan 	chan PeerUpdate,	peerMasterChan 	chan PeerUpdate,
 		Upkeep:
 			select {
 			case peerInfo := <-peerChan:
+				fmt.Println("Peerupdate UDPupkeep")
 				companions := peerInfo.Peers
 				lostCompanions := peerInfo.Lost
 				newCompanion := peerInfo.New

@@ -42,7 +42,7 @@ func LocalMode(	internetConnection chan bool, currentStateChan chan Elevator,
 }
 
 func Elev_driver(incm_elev_update chan Elevator, out_elev_update chan Elevator) int {
-	time.Sleep(time.Second*3)
+
 	//---Create channels------------------------------
 	target 		:= make(chan int)
 	lights 		:= make(chan Buttons)
@@ -85,6 +85,7 @@ func elev_init(target chan int, lights chan Buttons, statusIn chan Elevator, sta
 	floor_sense 	:= make(chan int)
 	directionChan 	:= make(chan Elev_motor_direction_t)
 
+	go elev_status_checker(statusIn, statusOut, directionChan)
 	elev_go(DIRN_DOWN)
 	go elev_poll_floor_sensor(floor_sense)
 	for {
@@ -94,7 +95,6 @@ func elev_init(target chan int, lights chan Buttons, statusIn chan Elevator, sta
 				elev_go(DIRN_STOP)
 				//---Start light controller and status checker----
 				go elev_light_controller(lights)
-				go elev_status_checker(statusIn, statusOut, directionChan)
 				go elev_go_to_floor(target, directionChan)
 				return 1
 			}

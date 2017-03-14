@@ -26,6 +26,7 @@ func MasterLoop(isMaster 	chan bool, 			masterMessage 	chan Message,
 					break Master
 
 				case messageBackup = <- masterMessage:
+					Println("Master got message")
 					senderID := messageBackup.SenderID
 					change1 := false
 					change2 := false

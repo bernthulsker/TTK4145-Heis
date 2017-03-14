@@ -155,37 +155,63 @@ func treatMessages(	UDPinChan 			chan Message, 	UDPoutChan 		chan Message,
 			}
 		}
 		select{
-		case messageBackup = <- UDPinChan:
-			if (messageBackup.MsgType == 1 && localIP == masterID){
-				fmt.Println("I got an order and my ID is " + localIP)
-				//fmt.Println(messageBackup)
-				masterMessage <- messageBackup
-			} else if (messageBackup.MsgType == 2){
-				elevIn <- messageBackup.Elevators[localIP]
-				fmt.Println(localIP + " got a queue")
-				fmt.Println(messageBackup.Elevators[localIP])
-				currentElevState <- messageBackup.Elevators[localIP]
-			} else if (messageBackup.MsgType == 3){
-				fmt.Println("Someone asked if " + localIP + " is master")
-				master.AmIMaster(messageBackup, masterID, UDPoutChan, localIP)
-			} else if (messageBackup.MsgType == 4){
-				fmt.Println("I was told that " + messageBackup.SenderID + " is the master")
-				masterIDChan <- messageBackup.SenderID
-				masterID = messageBackup.SenderID
+		case tempMessage := <- UDPinChan:
+			if(checkMessageValidity(tempMessage.Elevators[tempMessage.SenderID])){
+				messageBackup = tempMessage
+				if (messageBackup.MsgType == 1 && localIP == masterID){
+					fmt.Println("I got an order and my ID is " + localIP)
+					fmt.Println(messageBackup)
+					masterMessage <- messageBackup
+				} else if (messageBackup.MsgType == 2){
+					elevIn <- messageBackup.Elevators[localIP]
+					fmt.Println(localIP + " got a queue")
+					fmt.Println(messageBackup.Elevators[localIP])
+					currentElevState <- messageBackup.Elevators[localIP]
+				} else if (messageBackup.MsgType == 3){
+					fmt.Println("Someone asked if " + localIP + " is master")
+					master.AmIMaster(messageBackup, masterID, UDPoutChan, localIP)
+				} else if (messageBackup.MsgType == 4){
+					fmt.Println("I was told that " + messageBackup.SenderID + " is the master")
+					masterIDChan <- messageBackup.SenderID
+					masterID = messageBackup.SenderID
+				}
 			}
-
 		case masterID = <- masterIDChan:
 			fmt.Println("I got a masterID" + masterID)
 
 		case elev_status := <- elevOut:
 			messageBackup.Elevators[localIP] = elev_status
-			fmt.Println(messageBackup)
+			//fmt.Println("This is a elev-status")
+			//fmt.Println(messageBackup)
 			messageBackup.MsgType = 1
 			messageBackup.RecieverID = masterID
 			UDPoutChan <- messageBackup
 		case state = <- stateChan:
 		}
 	}
+}
+
+
+func checkMessageValidity(message Elevator) bool{
+
+	if(message.Floor < 1) {return false} 
+	if(message.Floor > 4) {return false}
+	for _, element := range message.Order.IntButtons{
+		if element > 1 || element < 0 {
+			return false
+		}
+	}
+	for _, element := range message.Order.ExtUpButtons{
+		if element > 1 || element < 0 {
+			return false
+		}
+	}
+	for _, element := range message.Order.ExtDwnButtons{
+		if element > 1 || element < 0 {
+			return false
+		}
+	}
+	return true
 }
 
 
