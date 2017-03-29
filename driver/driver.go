@@ -1,4 +1,4 @@
-package driver  // where "driver" is the folder that contains io.c, io.h, channels.h and driver.go (as well as possibly channels.go and io.go)
+package driver
 /*
 #cgo CFLAGS: -std=gnu11
 #cgo LDFLAGS: -lcomedi -lm
@@ -27,7 +27,7 @@ const (
 
 
 func Init() {
-	C.elev_init(1)
+	C.elev_init(0)
 }
 
 func Direction(dir Elev_motor_direction_t) {

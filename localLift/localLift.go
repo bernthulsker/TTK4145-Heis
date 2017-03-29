@@ -5,7 +5,6 @@ import (
 	."../definitions"
 	. "../driver"
 	"../master"
-	"fmt"
 	"time"
 )
 
@@ -21,9 +20,7 @@ func LocalMode(	internetConnection chan bool, currentStateChan chan Elevator,
 
 	elevators[localIP] = currentState
 	elevIn <- currentState
-	fmt.Println(currentState)
 	for{
-		fmt.Println(elevators)
 		select{
 		case elevator := <- elevOut:
 			elevators[localIP] = elevator
@@ -35,7 +32,6 @@ func LocalMode(	internetConnection chan bool, currentStateChan chan Elevator,
 				change1, change2 = false, false
 			}
 		case <- internetConnection:
-			fmt.Println("WE GOT MAIL!")
 			currentStateChan <- elevators[localIP] 
 			return
 		}
@@ -54,7 +50,6 @@ func Elev_driver(incm_elev_update chan Elevator, out_elev_update chan Elevator) 
 	//---Init of driver-------------------------------
 	init_result := elev_init(target,lights,statusIn,statusOut)
 	if init_result == 0 {
-		fmt.Println("Init failed")
 		return 0 //The elevator failed to initialize
 	}
 
@@ -274,7 +269,6 @@ func elev_status_checker(statusIn chan Elevator, statusOut chan Elevator, direct
 			statusOut <- status_elev
 		case position  	:= <- floor_sense:
 			if position != 0 { status_elev.Floor = position }
-			fmt.Println("New Position")
 			status_elev.Position = position
 			statusOut <- status_elev
 		case status_elev = <- statusIn:
