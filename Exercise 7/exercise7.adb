@@ -69,6 +69,8 @@ procedure exercise7 is
             Put_Line ("Worker" & Integer'Image(Initial) & " started round" & Integer'Image(Round_Num));
             Round_Num := Round_Num + 1;
 
+            
+
             ---------------------------------------
             -- PART 2: Do the transaction work here             
             ---------------------------------------
