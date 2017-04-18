@@ -5,7 +5,6 @@ procedure exercise7 is
 
     Count_Failed    : exception;    -- Exception to be raised when counting fails
     Gen             : Generator;    -- Random number generator
-
     protected type Transaction_Manager (N : Positive) is
         entry Finished;
         function Commit return Boolean;
@@ -18,9 +17,20 @@ procedure exercise7 is
     protected body Transaction_Manager is
         entry Finished when Finished_Gate_Open or Finished'Count = N is
         begin
-            ------------------------------------------
-            -- PART 3: Complete the exit protocol here
-            ------------------------------------------
+            if Finished'Count = N-1 then
+                Finished_Gate_Open := True;
+                Should_Commit      := True;
+            end if;
+
+            if Aborted then
+                Should_Commit      := False;
+            end if;
+
+            if Finished'Count = 0 then
+                Finished_Gate_Open := False;
+                Aborted            := False;
+            end if;
+
         end Finished;
 
         procedure Signal_Abort is
@@ -40,18 +50,17 @@ procedure exercise7 is
     
     function Unreliable_Slow_Add (x : Integer) return Integer is
     Error_Rate  : Constant  := 0.15;  -- (between 0 and 1)
-    Rand        : Float     := 0; 
-    d           : Float     := 4;
+    Rand        : Float     := 0.0; 
+    d           : Float     := 1.0;
     begin
-        Rand = Random(Gen);
+        Rand := Random(Gen);
         if Rand>Error_Rate then
             delay Duration(d);
-            x += 10;
-            return x;
+            return x + 10;
         else 
             delay Duration(0.5);
-            raise Count_Failed
-        end if
+            raise Count_Failed;
+        end if;
     end Unreliable_Slow_Add;
 
 
@@ -71,19 +80,23 @@ procedure exercise7 is
 
             
 
-            ---------------------------------------
-            -- PART 2: Do the transaction work here             
-            ---------------------------------------
-            
+            begin
+                Num := Unreliable_Slow_Add(Num);
+                Manager.Finished;
+
+            exception
+                when Count_Failed =>
+                    Manager.Signal_Abort;
+                    Manager.Finished;
+            end;
+
             if Manager.Commit = True then
                 Put_Line ("  Worker" & Integer'Image(Initial) & " comitting" & Integer'Image(Num));
             else
                 Put_Line ("  Worker" & Integer'Image(Initial) &
                              " reverting from" & Integer'Image(Num) &
                              " to" & Integer'Image(Prev));
-                -------------------------------------------
-                -- PART 2: Roll back to previous value here
-                -------------------------------------------
+            Num := Prev;
             end if;
 
             Prev := Num;
